@@ -1,0 +1,24 @@
+/vendor
+/node_modules
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+
+# Never commit credentials
+/storage/firebase-credentials.json
+
+/storage/*.key
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/bootstrap/cache/*
+/database/database.sqlite
+auth.json
+
+!storage/framework/cache/data/.gitkeep
+!storage/framework/sessions/.gitkeep
+!storage/framework/views/.gitkeep
+!storage/logs/.gitkeep
+!bootstrap/cache/.gitkeep

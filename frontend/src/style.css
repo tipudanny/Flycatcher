@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 font-mono text-sm;
+  }
+}
+
+/* Method badge colours */
+.method-GET    { @apply bg-blue-500/10 text-blue-700 border border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-300; }
+.method-POST   { @apply bg-green-500/10 text-green-700 border border-green-500/30 dark:bg-green-500/20 dark:text-green-300; }
+.method-PUT    { @apply bg-yellow-500/10 text-yellow-700 border border-yellow-500/30 dark:bg-yellow-500/20 dark:text-yellow-300; }
+.method-PATCH  { @apply bg-orange-500/10 text-orange-700 border border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-300; }
+.method-DELETE { @apply bg-red-500/10 text-red-700 border border-red-500/30 dark:bg-red-500/20 dark:text-red-300; }
+.method-HEAD   { @apply bg-purple-500/10 text-purple-700 border border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-300; }
