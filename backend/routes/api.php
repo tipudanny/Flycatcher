@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\EndpointController;
+use App\Http\Controllers\ExtensionController;
 use App\Http\Controllers\RequestController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +32,22 @@ Route::prefix('auth')->group(function () {
         Route::get('/me',      [AuthController::class, 'me']);
     });
 });
+
+// ── Admin ───────────────────────────────────────────────────────────────────────
+// Admin-only: manage users, plans, and inspect system-wide state.
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/stats',           [AdminController::class, 'stats']);
+    Route::get('/plans',           [AdminController::class, 'plans']);
+    Route::get('/users',           [AdminController::class, 'users']);
+    Route::patch('/users/{id}',    [AdminController::class, 'updateUser']);
+    Route::get('/endpoints',       [AdminController::class, 'endpoints']);
+    Route::get('/settings',        [AdminController::class, 'settings']);
+    Route::put('/settings',        [AdminController::class, 'updateSettings']);
+});
+
+// ── Browser extension ────────────────────────────────────────────────────────────
+// Public config the Chrome extension reads before the user connects.
+Route::get('/extension/config', [ExtensionController::class, 'config']);
 
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 // Accessible by authenticated users AND guests (with a valid cookie).

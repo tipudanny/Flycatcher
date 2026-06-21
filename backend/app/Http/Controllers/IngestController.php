@@ -27,6 +27,7 @@ class IngestController extends Controller
         // ── 1. Look up the endpoint ────────────────────────────────────────────
         $endpoint = Endpoint::where('token', $token)
             ->whereNull('deleted_at')
+            ->with('owner:id,plan') // plan drives the per-URL request limit
             ->first();
 
         if (! $endpoint) {

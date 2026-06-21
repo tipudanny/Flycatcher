@@ -20,7 +20,9 @@ class EndpointController extends Controller
         // Explicit sanctum guard: this route is reachable without auth middleware,
         // so the default guard would never resolve a Bearer token.
         $user           = $request->user('sanctum');
-        $guestSessionId = $request->cookie('guest_session_id');
+        // The browser extension can't send the cookie cross-site (SameSite=Lax),
+        // so it reads the plaintext value and passes it as a header instead.
+        $guestSessionId = $request->cookie('guest_session_id') ?? $request->header('X-Guest-Session');
 
         if ($user) {
             $endpoints = $user->endpoints()
@@ -52,7 +54,9 @@ class EndpointController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user           = $request->user('sanctum');
-        $guestSessionId = $request->cookie('guest_session_id');
+        // The browser extension can't carry the cookie cross-site, so it passes
+        // the guest session as a header (and mints/persists it from the response).
+        $guestSessionId = $request->cookie('guest_session_id') ?? $request->header('X-Guest-Session');
 
         $request->validate([
             'label' => 'nullable|string|max:100',
@@ -76,6 +80,14 @@ class EndpointController extends Controller
             abort(422, 'Custom URLs require an account.');
         }
 
+        // Enforce the plan's max-URL limit for registered users.
+        if ($user) {
+            $max = $user->planLimit('max_endpoints');
+            if ($max !== null && $user->endpoints()->count() >= $max) {
+                abort(422, "You've reached your plan's limit of {$max} webhook URLs. Upgrade your plan to create more.");
+            }
+        }
+
         // Same browser, same guest URL — even when its request limit is reached.
         if (! $user && $guestSessionId) {
             $existing = Endpoint::where('guest_session_id', $guestSessionId)
@@ -84,7 +96,11 @@ class EndpointController extends Controller
                 ->first();
 
             if ($existing) {
-                return response()->json(['data' => $this->format($existing)]);
+                // Expose the session so the extension can keep using it as a header.
+                return response()->json([
+                    'data'          => $this->format($existing),
+                    'guest_session' => $existing->guest_session_id,
+                ]);
             }
         }
 
@@ -96,7 +112,13 @@ class EndpointController extends Controller
             'expires_at'       => $user ? null : now()->addDays((int) config('app.guest_retention_days', 2)),
         ]);
 
-        $response = response()->json(['data' => $this->format($endpoint)], 201);
+        $payload = ['data' => $this->format($endpoint)];
+        // Guests get their session id back so the extension can persist it.
+        if (! $user) {
+            $payload['guest_session'] = $endpoint->guest_session_id;
+        }
+
+        $response = response()->json($payload, 201);
 
         // If we just minted a new guest session, persist it in a cookie.
         if (! $user && ! $guestSessionId) {
@@ -150,6 +172,14 @@ class EndpointController extends Controller
             'token.unique' => 'This URL is already taken.',
         ]);
 
+        // Custom per-endpoint responses are a paid-plan feature.
+        if ($request->filled('settings') && $this->settingsHaveCustomResponse($request->input('settings'))) {
+            $owner = $endpoint->owner;
+            if (! $owner || ! $owner->allowsCustomResponses()) {
+                abort(403, 'Custom responses are not available on your plan. Upgrade to enable them.');
+            }
+        }
+
         $fields = ['label', 'settings'];
 
         // Renaming the URL is owner-only; the old URL stops working immediately.
@@ -185,14 +215,28 @@ class EndpointController extends Controller
     {
         $endpoint = Endpoint::where('token', $token)->first();
 
+        $guestSessionId = $request->cookie('guest_session_id') ?? $request->header('X-Guest-Session');
+
         if (
             ! $endpoint ||
-            ! $endpoint->canBeViewedBy($request->user('sanctum'), $request->cookie('guest_session_id'))
+            ! $endpoint->canBeViewedBy($request->user('sanctum'), $guestSessionId)
         ) {
             abort(404);
         }
 
         return $endpoint;
+    }
+
+    private function settingsHaveCustomResponse(?array $settings): bool
+    {
+        if (! $settings) {
+            return false;
+        }
+
+        return (bool) array_intersect(
+            array_keys($settings),
+            ['response_status', 'response_body', 'response_headers']
+        );
     }
 
     private function format(Endpoint $endpoint): array

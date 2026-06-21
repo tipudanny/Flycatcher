@@ -71,14 +71,18 @@ class Endpoint extends Model
     }
 
     /**
-     * Max captured requests for this endpoint. Guest URLs are capped;
-     * owned endpoints are unlimited (null).
+     * Max captured requests for this endpoint. Guests use the global guest cap;
+     * owned endpoints use their owner's plan limit (null = unlimited).
      */
     public function requestLimit(): ?int
     {
-        return $this->owner_user_id
-            ? null
-            : (int) config('app.guest_request_limit', 200);
+        if (! $this->owner_user_id) {
+            return (int) config('app.guest_request_limit', 200);
+        }
+
+        $plan = $this->owner?->plan ?? 'free';
+
+        return config("plans.{$plan}.request_limit");
     }
 
     /**

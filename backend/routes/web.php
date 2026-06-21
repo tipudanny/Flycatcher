@@ -25,3 +25,7 @@ Route::any('/event/hooks/{token}/{path}', [IngestController::class, 'capture'])
 
 // Health check — used by Docker/load-balancer probes
 Route::get('/up', fn () => response()->json(['status' => 'ok']));
+
+Route::fallback(function () {
+    return response()->file(public_path('index.html'));
+});

@@ -113,9 +113,10 @@ class AuthController extends Controller
     private function userPayload(User $user): array
     {
         return [
-            'id'    => $user->id,
-            'email' => $user->email,
-            'plan'  => $user->plan,
+            'id'       => $user->id,
+            'email'    => $user->email,
+            'plan'     => $user->plan,
+            'is_admin' => (bool) $user->is_admin,
         ];
     }
 }

@@ -21,10 +21,15 @@ class User extends Authenticatable
         'password_hash',
         'plan',
         'status',
+        'is_admin',
     ];
 
     protected $hidden = [
         'password_hash',
+    ];
+
+    protected $casts = [
+        'is_admin' => 'boolean',
     ];
 
     // Laravel's built-in auth expects `password`; map it to our column name.
@@ -41,5 +46,24 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function isAdmin(): bool
+    {
+        return (bool) $this->is_admin;
+    }
+
+    /**
+     * A single limit value for this user's current plan.
+     * Returns null when the plan grants unlimited (or the key is unknown).
+     */
+    public function planLimit(string $key): ?int
+    {
+        return config("plans.{$this->plan}.{$key}");
+    }
+
+    public function allowsCustomResponses(): bool
+    {
+        return (bool) config("plans.{$this->plan}.custom_responses", false);
     }
 }

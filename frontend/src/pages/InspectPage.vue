@@ -2,7 +2,10 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
     <!-- Nav -->
     <header class="border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between">
-      <span class="text-gray-900 dark:text-white font-semibold text-sm">Webhook Inspector</span>
+      <span class="flex items-center gap-2">
+        <img src="/favicon.svg" alt="" class="w-5 h-5" />
+        <span class="text-gray-900 dark:text-white font-semibold text-sm">Flycatcher</span>
+      </span>
       <div class="flex items-center gap-3">
         <span v-if="liveConnected" class="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
           <span class="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse"></span>

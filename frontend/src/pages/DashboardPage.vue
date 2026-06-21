@@ -2,9 +2,19 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
     <!-- Nav -->
     <header class="border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between">
-      <span class="text-gray-900 dark:text-white font-semibold">Webhook Inspector</span>
+      <span class="flex items-center gap-2">
+        <img src="/favicon.svg" alt="" class="w-6 h-6" />
+        <span class="text-gray-900 dark:text-white font-semibold">Flycatcher</span>
+      </span>
       <div class="flex items-center gap-4">
         <ThemeToggle />
+        <router-link
+          v-if="auth.user?.is_admin"
+          to="/admin"
+          class="text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:hover:bg-indigo-500/30 transition-colors"
+        >
+          Admin
+        </router-link>
         <span class="text-gray-500 dark:text-gray-400 text-xs">{{ auth.user?.email }}</span>
         <button @click="auth.logout().then(() => router.push('/login'))"
           class="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">

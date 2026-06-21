@@ -89,9 +89,11 @@ class RequestController extends Controller
     {
         $endpoint = Endpoint::where('token', $token)->first();
 
+        $guestSessionId = $request->cookie('guest_session_id') ?? $request->header('X-Guest-Session');
+
         if (
             ! $endpoint ||
-            ! $endpoint->canBeViewedBy($request->user('sanctum'), $request->cookie('guest_session_id'))
+            ! $endpoint->canBeViewedBy($request->user('sanctum'), $guestSessionId)
         ) {
             abort(404);
         }

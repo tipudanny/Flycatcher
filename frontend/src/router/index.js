@@ -33,6 +33,12 @@ const routes = [
     name: 'inspect',
     component: () => import('@/pages/InspectPage.vue'),
   },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('@/pages/AdminPage.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
 ]
 
 const router = createRouter({
@@ -50,6 +56,11 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  // Admin-only routes — bounce non-admins back to the dashboard.
+  if (to.meta.requiresAdmin && !auth.user?.is_admin) {
+    return { name: 'dashboard' }
   }
 
   if (to.meta.guest && auth.isAuthenticated) {

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    :root {
+      --bg: #0b0b14; --bg-soft: #11111d; --panel: #14141f; --panel-2: #181826;
+      --border: #232336; --border-soft: #1b1b29;
+      --text: #e5e7eb; --text-dim: #9ca3af; --text-faint: #6b7280;
+      --accent: #6366f1; --accent-soft: #1e1b4b; --accent-text: #a5b4fc;
+      --green: #34d399;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f7fb; --bg-soft: #fff; --panel: #fff; --panel-2: #f3f4f6;
+        --border: #e5e7eb; --border-soft: #eef0f3;
+        --text: #111827; --text-dim: #6b7280; --text-faint: #9ca3af;
+        --accent: #4f46e5; --accent-soft: #eef2ff; --accent-text: #4338ca;
+        --green: #059669;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+      display: flex; flex-direction: column; height: 100vh;
+    }
+    a { color: var(--accent-text); }
+
+    header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      background: var(--bg-soft); flex-shrink: 0;
+    }
+    header img { width: 18px; height: 18px; }
+    header .brand { font-weight: 600; font-size: 13px; }
+    header .live { display: none; align-items: center; gap: 5px; font-size: 11px; color: var(--green); }
+    header .live.on { display: inline-flex; }
+    header .live .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.6s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    header .spacer { flex: 1; }
+    header .icon-btn { background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 12px; padding: 4px; }
+    header .icon-btn:hover { color: var(--text); }
+    header .new-btn { background: var(--accent); color: #fff; border: none; border-radius: 6px; font: inherit; font-size: 11px; padding: 4px 9px; cursor: pointer; }
+    header .new-btn:hover { filter: brightness(1.1); }
+
+    .newbar { display: none; flex-direction: column; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); background: var(--bg-soft); flex-shrink: 0; }
+    .newbar.show { display: flex; }
+    .newbar .fields { display: flex; gap: 8px; }
+    .newbar input { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; font: inherit; font-size: 12px; color: var(--text); }
+    .newbar input:focus { outline: none; border-color: var(--accent); }
+    .newbar button { font: inherit; font-size: 12px; padding: 7px 12px; border-radius: 6px; border: none; cursor: pointer; }
+    .newbar .create { background: var(--accent); color: #fff; }
+    .newbar .ghost { background: none; border: 1px solid var(--border); color: var(--text-dim); }
+    .newbar .hint { font-size: 11px; color: var(--text-faint); }
+    .newbar .err { font-size: 11px; color: #f87171; }
+
+    .crumb {
+      display: none; align-items: center; gap: 8px;
+      padding: 8px 12px; border-bottom: 1px solid var(--border-soft);
+      background: var(--bg-soft); font-size: 12px; flex-shrink: 0;
+    }
+    .crumb.show { display: flex; }
+    .crumb button { background: none; border: none; color: var(--text-dim); cursor: pointer; font: inherit; padding: 0; }
+    .crumb button:hover { color: var(--text); }
+    .crumb .title { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    #scroll { flex: 1; overflow-y: auto; }
+    .empty { padding: 28px 16px; text-align: center; color: var(--text-faint); font-size: 12px; line-height: 1.7; }
+    .empty a { cursor: pointer; }
+
+    /* Endpoint cards */
+    .card {
+      margin: 10px 12px; padding: 12px; border: 1px solid var(--border);
+      border-radius: 10px; background: var(--panel); cursor: pointer; transition: border-color .12s;
+    }
+    .card:hover { border-color: var(--accent); }
+    .card .top { display: flex; align-items: center; gap: 8px; }
+    .card .label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card .count { margin-left: auto; font-size: 11px; color: var(--accent-text); background: var(--accent-soft); padding: 1px 8px; border-radius: 10px; }
+    .card .url { font-size: 11px; color: var(--text-faint); margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Request rows */
+    .req { padding: 10px 12px; border-bottom: 1px solid var(--border-soft); cursor: pointer; }
+    .req:hover { background: var(--panel-2); }
+    .req .line { display: flex; align-items: center; gap: 8px; }
+    .req .path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .req .sub { margin-top: 4px; display: flex; gap: 8px; font-size: 11px; color: var(--text-faint); }
+    .req .sub .time { margin-left: auto; }
+
+    .badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 5px; border: 1px solid transparent; flex-shrink: 0; }
+    .method-GET    { background: rgba(59,130,246,.15); color: #60a5fa; border-color: rgba(59,130,246,.3); }
+    .method-POST   { background: rgba(16,185,129,.15); color: #34d399; border-color: rgba(16,185,129,.3); }
+    .method-PUT    { background: rgba(234,179,8,.15);  color: #eab308; border-color: rgba(234,179,8,.3); }
+    .method-PATCH  { background: rgba(249,115,22,.15); color: #fb923c; border-color: rgba(249,115,22,.3); }
+    .method-DELETE { background: rgba(239,68,68,.15);  color: #f87171; border-color: rgba(239,68,68,.3); }
+    .method-HEAD, .method-OPTIONS { background: rgba(168,85,247,.15); color: #c084fc; border-color: rgba(168,85,247,.3); }
+
+    /* Detail */
+    .detail { padding: 12px; }
+    .detail .head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .detail .head .path { word-break: break-all; font-size: 12px; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .meta .k { font-size: 11px; color: var(--text-faint); }
+    .meta .v { font-size: 12px; margin-top: 2px; word-break: break-all; }
+    .section-title { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; margin: 16px 0 8px; }
+    .kv { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .kv .row { display: flex; gap: 10px; padding: 7px 10px; font-size: 11px; border-bottom: 1px solid var(--border-soft); }
+    .kv .row:last-child { border-bottom: none; }
+    .kv .row .name { color: var(--text-dim); flex-shrink: 0; width: 42%; word-break: break-all; }
+    .kv .row .val { word-break: break-all; }
+    .body-head { display: flex; align-items: center; margin: 16px 0 8px; }
+    .body-head .section-title { margin: 0; }
+    .body-head .toggle { margin-left: auto; display: flex; gap: 8px; }
+    .body-head .toggle button { background: none; border: none; color: var(--text-faint); cursor: pointer; font: inherit; font-size: 11px; }
+    .body-head .toggle button.active { color: var(--text); }
+    pre { margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 11.5px; line-height: 1.5; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 50vh; }
+    .copy { display:inline-block; margin-top:8px; background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:6px; padding:4px 9px; font:inherit; font-size:11px; cursor:pointer; }
+    .copy:hover { border-color: var(--accent); color: var(--text); }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="icons/icon48.png" alt="" />
+    <span class="brand">Flycatcher</span>
+    <span class="live" id="live"><span class="dot"></span>Live</span>
+    <span class="spacer"></span>
+    <button class="new-btn" id="new" title="Create a webhook URL">+ New</button>
+    <button class="icon-btn" id="refresh" title="Refresh">↻</button>
+    <button class="icon-btn" id="settings" title="Settings">⚙</button>
+  </header>
+
+  <div class="newbar" id="newbar">
+    <div class="fields">
+      <input id="new-label" type="text" placeholder="Label (optional)" maxlength="100" />
+      <button class="create" id="new-create">Create</button>
+      <button class="ghost" id="new-cancel">Cancel</button>
+    </div>
+    <div class="hint" id="new-hint"></div>
+    <div class="err" id="new-err"></div>
+  </div>
+
+  <div class="crumb" id="crumb">
+    <button id="back">← Back</button>
+    <span class="title" id="crumb-title"></span>
+  </div>
+
+  <div id="scroll">
+    <div class="empty" id="empty">Loading…</div>
+    <div id="view"></div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@
     </div>
     <div class="w-full max-w-sm space-y-6 px-4">
       <div class="text-center">
+        <img src="/favicon.svg" alt="Flycatcher" class="w-10 h-10 mx-auto mb-2" />
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Create account</h1>
         <p class="mt-1 text-gray-500 dark:text-gray-400 text-sm">Start inspecting webhooks instantly</p>
       </div>

@@ -5,7 +5,10 @@
     </div>
     <div class="w-full max-w-sm space-y-6 px-4">
       <div class="text-center">
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Webhook Inspector</h1>
+        <div class="flex items-center justify-center gap-2">
+          <img src="/favicon.svg" alt="" class="w-8 h-8" />
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Flycatcher</h1>
+        </div>
         <p class="mt-1 text-gray-500 dark:text-gray-400 text-sm">Sign in to your account</p>
       </div>
 

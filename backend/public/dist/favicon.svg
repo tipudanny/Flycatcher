@@ -1,0 +1,28 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flycatcher">
+  <defs>
+    <linearGradient id="fcBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+  </defs>
+  <!-- Badge -->
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#fcBg)"/>
+  <!-- Incoming webhook signal being caught -->
+  <circle cx="50" cy="15" r="3" fill="#a5b4fc"/>
+  <!-- Swallow wings (swept "M") -->
+  <path fill="#ffffff" d="
+    M 8 32
+    Q 19 15 32 25
+    Q 45 15 56 32
+    Q 45 21 32 30
+    Q 19 21 8 32
+    Z"/>
+  <!-- Forked tail -->
+  <path fill="#ffffff" d="
+    M 28 28
+    L 25 46
+    L 32 39
+    L 39 46
+    L 36 28
+    Z"/>
+</svg>

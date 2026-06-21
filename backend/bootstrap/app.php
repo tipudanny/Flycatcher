@@ -19,6 +19,19 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'event/hooks/*',
         ]);
+
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureAdmin::class,
+        ]);
+
+        // Keep the guest session id as a plaintext random token so the browser
+        // extension can read it from the cookie jar (chrome.cookies) and
+        // auto-discover the browser's guest URLs — no login, no pairing code.
+        // It's an opaque 32-char secret; encryption added integrity but nothing
+        // a DB lookup of a random value doesn't already provide.
+        $middleware->encryptCookies(except: [
+            'guest_session_id',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

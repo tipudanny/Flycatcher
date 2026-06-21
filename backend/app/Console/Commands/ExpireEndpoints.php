@@ -23,6 +23,7 @@ class ExpireEndpoints extends Command
     {
         $deleted = 0;
 
+        // 1. Guests: delete the whole endpoint (and its requests via cascade).
         Endpoint::withTrashed()
             ->whereNull('owner_user_id')
             ->whereNotNull('expires_at')
@@ -36,6 +37,44 @@ class ExpireEndpoints extends Command
 
         $this->info("Deleted {$deleted} expired guest endpoint(s).");
 
+        // 2. Registered users: keep the endpoint, prune requests older than the
+        //    owner's plan retention window. request_count is decremented so the
+        //    per-URL quota frees up as old data rolls off.
+        $pruned = $this->pruneRegisteredRequests();
+
+        $this->info("Pruned {$pruned} expired request(s) from registered endpoints.");
+
         return self::SUCCESS;
+    }
+
+    private function pruneRegisteredRequests(): int
+    {
+        $pruned = 0;
+
+        foreach (config('plans') as $plan => $limits) {
+            $days = $limits['retention_days'] ?? null;
+            if ($days === null) {
+                continue; // unlimited retention
+            }
+
+            $cutoff = now()->subDays($days);
+
+            Endpoint::whereNotNull('owner_user_id')
+                ->whereHas('owner', fn ($q) => $q->where('plan', $plan))
+                ->chunkById(100, function ($endpoints) use ($cutoff, &$pruned) {
+                    foreach ($endpoints as $endpoint) {
+                        $count = $endpoint->webhookRequests()
+                            ->where('received_at', '<', $cutoff)
+                            ->delete();
+
+                        if ($count > 0) {
+                            $endpoint->decrement('request_count', $count);
+                            $pruned += $count;
+                        }
+                    }
+                });
+        }
+
+        return $pruned;
     }
 }
