@@ -80,6 +80,11 @@ class EndpointController extends Controller
             abort(422, 'Custom URLs require an account.');
         }
 
+        // Registered users must verify their email before creating URLs.
+        if ($user && ! $user->hasVerifiedEmail()) {
+            abort(403, 'Please verify your email address before creating URLs.');
+        }
+
         // Enforce the plan's max-URL limit for registered users.
         if ($user) {
             $max = $user->planLimit('max_endpoints');

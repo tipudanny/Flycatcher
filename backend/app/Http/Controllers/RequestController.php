@@ -66,21 +66,43 @@ class RequestController extends Controller
             ->where('id', $requestId)
             ->delete();
 
+        $this->syncCount($endpoint);
+
         return response()->json(null, 204);
     }
 
     /**
-     * Delete all requests for an endpoint.
+     * Delete requests for an endpoint. With an `ids` array in the body, only
+     * those are deleted (bulk select); otherwise every request is cleared.
      */
     public function destroyAll(Request $request, string $token): JsonResponse
     {
         $endpoint = $this->findAuthorized($request, $token);
 
-        $endpoint->webhookRequests()->delete();
+        $request->validate([
+            'ids'   => 'sometimes|array|max:1000',
+            'ids.*' => 'string',
+        ]);
 
-        $endpoint->update(['request_count' => 0]);
+        $ids = $request->input('ids');
+
+        if (is_array($ids) && count($ids)) {
+            $endpoint->webhookRequests()->whereIn('id', $ids)->delete();
+        } else {
+            $endpoint->webhookRequests()->delete();
+        }
+
+        $this->syncCount($endpoint);
 
         return response()->json(null, 204);
+    }
+
+    // Keep the denormalized counter honest after deletions. Set the attribute
+    // directly (request_count is intentionally not mass-assignable).
+    private function syncCount(Endpoint $endpoint): void
+    {
+        $endpoint->request_count = $endpoint->webhookRequests()->count();
+        $endpoint->saveQuietly();
     }
 
     // ── Private helpers ────────────────────────────────────────────────────────

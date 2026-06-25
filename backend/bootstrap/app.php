@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
 
+        // Apply the general 'api' rate limiter to every /api/* route.
+        $middleware->throttleApi();
+
         // Ingestion is for third-party webhook senders — they can't carry a
         // CSRF token, and the web group would otherwise 419 every POST.
         $middleware->validateCsrfTokens(except: [

@@ -17,6 +17,12 @@ return [
     // Only honour X-Forwarded-* headers when behind our own load balancer.
     'trust_proxy' => (bool) env('TRUST_PROXY', false),
 
+    // ── Rate limits (per minute) ─────────────────────────────────────────────
+    'ingest_ip_limit' => (int) env('INGEST_IP_LIMIT', 300), // total captures per IP
+    'api_limit'       => (int) env('API_LIMIT', 120),       // general /api/* per user/IP
+    'auth_limit'      => (int) env('AUTH_LIMIT', 10),        // login/register per IP
+    'create_limit'    => (int) env('CREATE_LIMIT', 20),     // URL creation per user/IP
+
     // Guest endpoints: max captured requests per URL. Once reached, the
     // capture URL rejects new hooks (429) but data stays readable.
     'guest_request_limit' => (int) env('GUEST_REQUEST_LIMIT', 200),

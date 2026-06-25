@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Endpoint;
 use App\Models\User;
+use App\Models\WebhookRequest;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -35,12 +38,83 @@ class AuthController extends Controller
         // Claim guest endpoints if the session cookie is present
         $this->claimGuestEndpoints($user, $request->cookie('guest_session_id'));
 
+        // Sends the verification email (User implements MustVerifyEmail).
+        event(new Registered($user));
+
         $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
             'user'  => $this->userPayload($user),
             'token' => $token,
         ], 201);
+    }
+
+    /**
+     * Verify an email address from the signed link in the verification email.
+     * No bearer auth — the signature + hash are the credential. Redirects back
+     * to the SPA when done.
+     */
+    public function verify(Request $request, string $id, string $hash): RedirectResponse
+    {
+        $front = rtrim(config('app.frontend_url'), '/');
+        $user = User::find($id);
+
+        if (! $user || ! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
+            return redirect("{$front}/login?verified=0");
+        }
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
+        return redirect("{$front}/login?verified=1");
+    }
+
+    /**
+     * Resend the verification email to the current user.
+     */
+    public function resend(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Already verified.']);
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return response()->json(['message' => 'Verification email sent.']);
+    }
+
+    /**
+     * Account overview for the logged-in dashboard: plan, limits, and usage.
+     */
+    public function overview(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $plan = config("plans.{$user->plan}", []);
+        $endpointIds = $user->endpoints()->pluck('id');
+
+        return response()->json([
+            'data' => [
+                'plan'           => $user->plan,
+                'plan_label'     => $plan['label'] ?? ucfirst($user->plan),
+                'email_verified' => $user->hasVerifiedEmail(),
+                'limits'         => [
+                    'max_endpoints'    => $plan['max_endpoints'] ?? null,
+                    'request_limit'    => $plan['request_limit'] ?? null,
+                    'retention_days'   => $plan['retention_days'] ?? null,
+                    'custom_responses' => $plan['custom_responses'] ?? false,
+                ],
+                'usage' => [
+                    'endpoints'      => $endpointIds->count(),
+                    'requests_total' => (int) $user->endpoints()->sum('request_count'),
+                    'requests_today' => WebhookRequest::whereIn('endpoint_id', $endpointIds)
+                        ->where('received_at', '>=', now()->startOfDay())
+                        ->count(),
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -113,10 +187,11 @@ class AuthController extends Controller
     private function userPayload(User $user): array
     {
         return [
-            'id'       => $user->id,
-            'email'    => $user->email,
-            'plan'     => $user->plan,
-            'is_admin' => (bool) $user->is_admin,
+            'id'             => $user->id,
+            'email'          => $user->email,
+            'plan'           => $user->plan,
+            'is_admin'       => (bool) $user->is_admin,
+            'email_verified' => $user->hasVerifiedEmail(),
         ];
     }
 }
