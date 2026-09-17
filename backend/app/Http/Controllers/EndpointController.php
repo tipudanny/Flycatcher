@@ -187,8 +187,8 @@ class EndpointController extends Controller
 
         $fields = ['label', 'settings'];
 
-        // Renaming the URL is owner-only; the old URL stops working immediately.
-        if ($request->filled('token') && $endpoint->owner_user_id === $request->user()?->id) {
+        // Renaming the URL is owner (or admin) only; the old URL stops working immediately.
+        if ($request->filled('token') && ($endpoint->owner_user_id === $request->user()?->id || $request->user()?->is_admin)) {
             $fields[] = 'token';
         }
 

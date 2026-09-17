@@ -106,9 +106,17 @@ class Endpoint extends Model
      */
     public function canBeViewedBy(?User $user, ?string $guestSessionId = null): bool
     {
-        // Owner of a private endpoint
-        if ($user && $this->owner_user_id === $user->id) {
+        // Admins can manage every endpoint — this is also what backs the
+        // admin panel's edit/delete/view actions, via the same owner-scoped
+        // controller methods everyone else uses.
+        if ($user?->is_admin) {
             return true;
+        }
+
+        // Owner of a private endpoint — but a suspended account loses access
+        // immediately, even with a still-valid token issued before suspension.
+        if ($user && $this->owner_user_id === $user->id) {
+            return $user->isActive();
         }
 
         // Guest: session must match

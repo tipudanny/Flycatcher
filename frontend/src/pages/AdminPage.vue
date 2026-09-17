@@ -127,6 +127,7 @@
                     :disabled="savingId === u.id"
                     :class="u.status === 'active' ? 'badge-green' : 'badge-red'"
                     class="hover:brightness-95 dark:hover:brightness-125 transition-all"
+                    :title="u.status === 'active' ? 'Suspend this user — blocks login, endpoint access, and webhook capture' : 'Reactivate this user'"
                   >
                     {{ u.status === 'active' ? 'Active' : 'Suspended' }}
                   </button>
@@ -139,6 +140,20 @@
               </tr>
             </tbody>
           </table>
+          </div>
+          <div v-if="usersMeta.total" class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
+            <span>
+              Showing <span class="font-medium text-gray-700 dark:text-gray-300">{{ usersMeta.from }}–{{ usersMeta.to }}</span>
+              of <span class="font-medium text-gray-700 dark:text-gray-300">{{ usersMeta.total }}</span> users
+              <span class="text-gray-300 dark:text-gray-700">·</span>
+              page <span class="font-medium text-gray-700 dark:text-gray-300">{{ usersMeta.current_page }}</span> of {{ usersMeta.last_page }}
+              <span class="text-gray-300 dark:text-gray-700">·</span>
+              {{ usersMeta.per_page }} per page
+            </span>
+            <div class="flex items-center gap-2">
+              <button @click="changeUsersPage(usersMeta.current_page - 1)" :disabled="usersMeta.current_page <= 1" class="btn-secondary btn-sm !px-2.5 !py-1">Prev</button>
+              <button @click="changeUsersPage(usersMeta.current_page + 1)" :disabled="usersMeta.current_page >= usersMeta.last_page" class="btn-secondary btn-sm !px-2.5 !py-1">Next</button>
+            </div>
           </div>
         </div>
       </section>
@@ -162,24 +177,78 @@
                 <th class="text-left font-medium px-4 py-2.5">Type</th>
                 <th class="text-right font-medium px-4 py-2.5">Requests</th>
                 <th class="text-right font-medium px-4 py-2.5">Last activity</th>
+                <th class="text-right font-medium px-4 py-2.5">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="e in endpoints" :key="e.token" class="border-b border-gray-100 dark:border-gray-800/60 last:border-0 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors">
-                <td class="px-4 py-2.5 font-mono text-xs text-gray-900 dark:text-gray-200">
-                  {{ e.token }}
-                  <span v-if="e.label" class="text-gray-400">· {{ e.label }}</span>
-                </td>
-                <td class="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs">{{ e.owner_email || 'guest' }}</td>
-                <td class="px-4 py-2.5"><span class="badge-neutral capitalize">{{ e.type }}</span></td>
-                <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300 tabular-nums">{{ e.request_count }}</td>
-                <td class="px-4 py-2.5 text-right text-gray-500 text-xs">{{ e.last_activity_at ? fmtDate(e.last_activity_at) : '—' }}</td>
-              </tr>
+              <template v-for="e in endpoints" :key="e.token">
+                <tr v-if="editingToken !== e.token" class="border-b border-gray-100 dark:border-gray-800/60 last:border-0 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors">
+                  <td class="px-4 py-2.5 font-mono text-xs text-gray-900 dark:text-gray-200">
+                    {{ e.token }}
+                    <span v-if="e.label" class="text-gray-400">· {{ e.label }}</span>
+                  </td>
+                  <td class="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs">{{ e.owner_email || 'guest' }}</td>
+                  <td class="px-4 py-2.5"><span class="badge-neutral capitalize">{{ e.type }}</span></td>
+                  <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300 tabular-nums">{{ e.request_count }}</td>
+                  <td class="px-4 py-2.5 text-right text-gray-500 text-xs">{{ e.last_activity_at ? fmtDate(e.last_activity_at) : '—' }}</td>
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center justify-end gap-1">
+                      <button @click="router.push(`/endpoints/${e.token}`)" title="View" class="btn-ghost !px-2 !py-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      </button>
+                      <button @click="startEdit(e)" title="Edit" class="btn-ghost !px-2 !py-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5v4.75A2.25 2.25 0 0117.25 20.5H5.75A2.25 2.25 0 013.5 18.25V6.75A2.25 2.25 0 015.75 4.5h4.75" /></svg>
+                      </button>
+                      <template v-if="confirmingDeleteToken === e.token">
+                        <button @click="deleteEndpoint(e)" :disabled="deletingToken === e.token" class="text-xs px-2 py-1 rounded-md bg-red-600 hover:bg-red-500 text-white transition-colors">
+                          {{ deletingToken === e.token ? 'Deleting…' : 'Confirm' }}
+                        </button>
+                        <button @click="confirmingDeleteToken = null" class="btn-ghost !px-2 !py-1 text-xs">Cancel</button>
+                      </template>
+                      <button v-else @click="confirmingDeleteToken = e.token" title="Delete" class="btn-danger-ghost !px-2 !py-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-else class="border-b border-gray-100 dark:border-gray-800/60 last:border-0 bg-brand-50/40 dark:bg-brand-500/[0.06]">
+                  <td class="px-4 py-2.5" colspan="2">
+                    <div class="flex items-center gap-2">
+                      <input v-model="editForm.label" placeholder="Label" class="input !py-1 !px-2 text-xs w-32" />
+                      <input v-model="editForm.token" placeholder="Custom slug" class="input !py-1 !px-2 text-xs font-mono w-40" />
+                    </div>
+                  </td>
+                  <td class="px-4 py-2.5"><span class="badge-neutral capitalize">{{ e.type }}</span></td>
+                  <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300 tabular-nums">{{ e.request_count }}</td>
+                  <td class="px-4 py-2.5"></td>
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center justify-end gap-2">
+                      <span v-if="editError" class="text-xs text-red-500 dark:text-red-400">{{ editError }}</span>
+                      <button @click="cancelEdit" class="btn-ghost !px-2.5 !py-1">Cancel</button>
+                      <button @click="saveEdit(e)" :disabled="savingEdit" class="btn-primary btn-sm">{{ savingEdit ? 'Saving…' : 'Save' }}</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
               <tr v-if="!endpoints.length">
-                <td colspan="5" class="px-4 py-10 text-center text-gray-400 dark:text-gray-600 text-xs">No endpoints found.</td>
+                <td colspan="6" class="px-4 py-10 text-center text-gray-400 dark:text-gray-600 text-xs">No endpoints found.</td>
               </tr>
             </tbody>
           </table>
+          </div>
+          <div v-if="endpointsMeta.total" class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
+            <span>
+              Showing <span class="font-medium text-gray-700 dark:text-gray-300">{{ endpointsMeta.from }}–{{ endpointsMeta.to }}</span>
+              of <span class="font-medium text-gray-700 dark:text-gray-300">{{ endpointsMeta.total }}</span> endpoints
+              <span class="text-gray-300 dark:text-gray-700">·</span>
+              page <span class="font-medium text-gray-700 dark:text-gray-300">{{ endpointsMeta.current_page }}</span> of {{ endpointsMeta.last_page }}
+              <span class="text-gray-300 dark:text-gray-700">·</span>
+              {{ endpointsMeta.per_page }} per page
+            </span>
+            <div class="flex items-center gap-2">
+              <button @click="changeEndpointsPage(endpointsMeta.current_page - 1)" :disabled="endpointsMeta.current_page <= 1" class="btn-secondary btn-sm !px-2.5 !py-1">Prev</button>
+              <button @click="changeEndpointsPage(endpointsMeta.current_page + 1)" :disabled="endpointsMeta.current_page >= endpointsMeta.last_page" class="btn-secondary btn-sm !px-2.5 !py-1">Next</button>
+            </div>
           </div>
         </div>
       </section>
@@ -202,6 +271,17 @@ const endpoints = ref([])
 const savingId  = ref(null)
 const userQuery     = ref('')
 const endpointQuery = ref('')
+
+const emptyMeta = () => ({ current_page: 1, last_page: 1, per_page: 0, total: 0, from: null, to: null })
+const usersMeta     = ref(emptyMeta())
+const endpointsMeta = ref(emptyMeta())
+
+const editingToken = ref(null)
+const editForm     = ref({ label: '', token: '' })
+const savingEdit   = ref(false)
+const editError    = ref('')
+const deletingToken = ref(null)
+const confirmingDeleteToken = ref(null)
 
 const settings       = ref(null)
 const savingSettings = ref(false)
@@ -257,18 +337,81 @@ async function saveSettings() {
   }
 }
 
-async function loadUsers() {
-  const res = await adminApi.users(userQuery.value)
+async function loadUsers(page = 1) {
+  const res = await adminApi.users(userQuery.value, page)
   users.value = res.data.data
+  usersMeta.value = res.data.meta
 }
-async function loadEndpoints() {
-  const res = await adminApi.endpoints(endpointQuery.value)
+async function loadEndpoints(page = 1) {
+  const res = await adminApi.endpoints(endpointQuery.value, page)
   endpoints.value = res.data.data
+  endpointsMeta.value = res.data.meta
 }
 
+function changeUsersPage(page) {
+  if (page < 1 || page > usersMeta.value.last_page) return
+  loadUsers(page)
+}
+function changeEndpointsPage(page) {
+  if (page < 1 || page > endpointsMeta.value.last_page) return
+  loadEndpoints(page)
+}
+
+// A new search resets back to page 1 — the old page number rarely still
+// makes sense against a different filtered result set.
 let uTimer, eTimer
-function debouncedLoadUsers()     { clearTimeout(uTimer); uTimer = setTimeout(loadUsers, 300) }
-function debouncedLoadEndpoints() { clearTimeout(eTimer); eTimer = setTimeout(loadEndpoints, 300) }
+function debouncedLoadUsers()     { clearTimeout(uTimer); uTimer = setTimeout(() => loadUsers(1), 300) }
+function debouncedLoadEndpoints() { clearTimeout(eTimer); eTimer = setTimeout(() => loadEndpoints(1), 300) }
+
+// ── Endpoint management (view / edit / delete) ────────────────────────────────
+function startEdit(endpoint) {
+  editingToken.value = endpoint.token
+  editForm.value = { label: endpoint.label || '', token: endpoint.token }
+  editError.value = ''
+  confirmingDeleteToken.value = null
+}
+
+function cancelEdit() {
+  editingToken.value = null
+  editError.value = ''
+}
+
+async function saveEdit(endpoint) {
+  savingEdit.value = true
+  editError.value  = ''
+  try {
+    const res = await adminApi.updateEndpoint(endpoint.token, {
+      label: editForm.value.label || null,
+      token: editForm.value.token,
+    })
+    Object.assign(endpoint, {
+      token: res.data.data.token,
+      label: res.data.data.label,
+    })
+    editingToken.value = null
+  } catch (e) {
+    const errors = e.response?.data?.errors
+    editError.value = errors ? Object.values(errors).flat().join(' ') : (e.response?.data?.message || 'Could not save.')
+  } finally {
+    savingEdit.value = false
+  }
+}
+
+async function deleteEndpoint(endpoint) {
+  deletingToken.value = endpoint.token
+  try {
+    await adminApi.deleteEndpoint(endpoint.token)
+    // Re-fetch this page rather than patching counts locally — deleting the
+    // last row on a page shifts current_page/from/to/last_page too.
+    const page = endpoints.value.length === 1 && endpointsMeta.value.current_page > 1
+      ? endpointsMeta.value.current_page - 1
+      : endpointsMeta.value.current_page
+    await Promise.all([loadEndpoints(page), refreshStats()])
+  } finally {
+    deletingToken.value = null
+    confirmingDeleteToken.value = null
+  }
+}
 
 async function changePlan(user, plan) {
   savingId.value = user.id

@@ -43,14 +43,17 @@ class AdminController extends Controller
             ->when($request->query('q'), fn ($q, $term) => $q->where('email', 'like', "%{$term}%"))
             ->withCount('endpoints')
             ->orderByDesc('created_at')
-            ->paginate(50);
+            ->paginate(10);
 
         return response()->json([
             'data' => $users->map(fn (User $u) => $this->formatUser($u)),
             'meta' => [
                 'current_page' => $users->currentPage(),
                 'last_page'    => $users->lastPage(),
+                'per_page'     => $users->perPage(),
                 'total'        => $users->total(),
+                'from'         => $users->firstItem(),
+                'to'           => $users->lastItem(),
             ],
         ]);
     }
@@ -82,7 +85,7 @@ class AdminController extends Controller
             ->when($request->query('q'), fn ($q, $term) =>
                 $q->where('token', 'like', "%{$term}%")->orWhere('label', 'like', "%{$term}%"))
             ->orderByDesc('last_activity_at')
-            ->paginate(50);
+            ->paginate(10);
 
         return response()->json([
             'data' => $endpoints->map(fn (Endpoint $e) => [
@@ -98,7 +101,10 @@ class AdminController extends Controller
             'meta' => [
                 'current_page' => $endpoints->currentPage(),
                 'last_page'    => $endpoints->lastPage(),
+                'per_page'     => $endpoints->perPage(),
                 'total'        => $endpoints->total(),
+                'from'         => $endpoints->firstItem(),
+                'to'           => $endpoints->lastItem(),
             ],
         ]);
     }

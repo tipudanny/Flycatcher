@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-hidden">
+  <div class="h-screen bg-gray-50 dark:bg-gray-950 bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(99,102,241,0.12),transparent_60%)] flex flex-col overflow-hidden">
     <AppHeader>
       <template #status>
         <span v-if="liveConnected" class="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
@@ -22,7 +22,7 @@
 
     <div v-if="endpoint" class="flex-1 flex flex-col min-h-0">
       <!-- Capture URL — compact, click-to-copy pill -->
-      <div class="border-b border-gray-200 dark:border-gray-800 px-4 sm:px-5 py-2.5 flex items-center gap-2 bg-white/50 dark:bg-white/[0.02]">
+      <div class="border-b border-gray-200 dark:border-gray-800 px-4 sm:px-5 py-2.5 flex items-center gap-2 bg-gradient-to-r from-brand-50/50 via-white/40 to-white/40 dark:from-brand-500/[0.05] dark:via-white/[0.015] dark:to-white/[0.015]">
         <span class="text-xs text-gray-500 dark:text-gray-400 shrink-0 hidden sm:inline">Your webhook URL</span>
         <button
           @click="copyUrl"
@@ -99,7 +99,7 @@
               :class="[
                 'group relative px-4 py-3 border-b border-gray-100 dark:border-gray-800/70 cursor-pointer transition-colors',
                 selectedId === req.id
-                  ? 'bg-brand-100/80 dark:bg-brand-500/[0.18] border-l-[3px] border-l-brand-600 dark:border-l-brand-400 ring-1 ring-inset ring-brand-500/15 -ml-px'
+                  ? 'bg-gradient-to-r from-brand-200/80 to-brand-50/50 dark:from-brand-500/[0.32] dark:to-brand-500/[0.08] border-l-[3px] border-l-brand-600 dark:border-l-brand-400 ring-1 ring-inset ring-brand-500/15 -ml-px'
                   : 'hover:bg-gray-100/70 dark:hover:bg-white/[0.03] border-l-[3px] border-l-transparent'
               ]"
             >
@@ -150,7 +150,7 @@
           </div>
         </div>
 
-        <div :class="['flex-1 overflow-y-auto min-h-0', selectedRequest ? 'block' : 'hidden md:block']">
+        <div :class="['flex-1 overflow-y-auto min-h-0 bg-white dark:bg-[#0b0e1a]', selectedRequest ? 'block' : 'hidden md:block']">
           <template v-if="selectedRequest">
             <button @click="backToList" class="md:hidden btn-ghost m-3 mb-0">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -159,10 +159,13 @@
             <RequestDetail :request="selectedRequest" :token="token" />
           </template>
           <div v-else class="hidden md:flex flex-col items-center justify-center h-full px-8 text-center">
-            <div class="w-14 h-14 rounded-2xl bg-brand-gradient flex items-center justify-center text-white shadow-lift mb-4">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+            <div class="relative mb-4">
+              <div class="absolute inset-0 bg-brand-500/35 blur-2xl rounded-full"></div>
+              <div class="relative w-14 h-14 rounded-2xl bg-brand-gradient flex items-center justify-center text-white shadow-lift">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
             </div>
             <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-1">
               {{ requests.length ? 'Select a request to inspect' : 'Waiting for your first request' }}

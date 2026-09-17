@@ -27,7 +27,7 @@ class IngestController extends Controller
         // ── 1. Look up the endpoint ────────────────────────────────────────────
         $endpoint = Endpoint::where('token', $token)
             ->whereNull('deleted_at')
-            ->with('owner:id,plan') // plan drives the per-URL request limit
+            ->with('owner:id,plan,status') // plan drives the per-URL request limit; status gates suspended owners
             ->first();
 
         if (! $endpoint) {
@@ -37,6 +37,13 @@ class IngestController extends Controller
 
         if ($endpoint->isExpired()) {
             return response('Gone.', 410);
+        }
+
+        // A suspended owner's endpoints stop accepting webhooks immediately —
+        // same 404 as a missing endpoint, so senders don't learn the account
+        // exists but is suspended.
+        if ($endpoint->owner && ! $endpoint->owner->isActive()) {
+            return response('Not found.', 404);
         }
 
         // Guest URLs stop capturing at their quota. Data already captured
