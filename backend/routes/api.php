@@ -79,6 +79,12 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::delete('/endpoints/{token}/requests', [RequestController::class, 'destroyAll']);
 Route::delete('/endpoints/{token}/requests/{requestId}', [RequestController::class, 'destroy']);
 
+// Replay — resend a captured request to a real URL. Same owner/guest
+// authorization as the rest of this group; throttled separately since it
+// triggers an outbound request on the caller's behalf.
+Route::post('/endpoints/{token}/requests/{requestId}/replay', [RequestController::class, 'replay'])
+    ->middleware('throttle:replay');
+
 // Read-only endpoints — accessible by owner OR guest-by-cookie
 Route::get('/endpoints',        [EndpointController::class, 'index']);
 Route::get('/endpoints/{token}', [EndpointController::class, 'show']);

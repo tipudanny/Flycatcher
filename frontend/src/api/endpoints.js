@@ -16,6 +16,13 @@ export const endpointsApi = {
   deleteRequest: (token, requestId) =>
     api.delete(`/endpoints/${token}/requests/${requestId}`),
 
+  replayRequest: (token, requestId, targetUrl) =>
+    api.post(`/endpoints/${token}/requests/${requestId}/replay`, { target_url: targetUrl }),
+
+  // Delete a selected set of requests (bulk).
+  deleteRequests: (token, ids) =>
+    api.delete(`/endpoints/${token}/requests`, { data: { ids } }),
+
   clearRequests: (token) =>
     api.delete(`/endpoints/${token}/requests`),
 }

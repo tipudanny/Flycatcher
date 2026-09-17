@@ -1,75 +1,70 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
-    <!-- Nav -->
-    <header class="border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between">
-      <span class="flex items-center gap-2">
-        <img src="/favicon.svg" alt="" class="w-6 h-6" />
-        <span class="text-gray-900 dark:text-white font-semibold">Flycatcher</span>
-        <span class="text-xs px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">admin</span>
-      </span>
-      <div class="flex items-center gap-4">
-        <ThemeToggle />
-        <button @click="router.push('/')" class="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
-          ← Back to app
+    <AppHeader>
+      <template #badge>
+        <span class="badge-brand">Admin</span>
+      </template>
+      <template #actions>
+        <button @click="router.push('/')" class="btn-ghost">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          Back to app
         </button>
-      </div>
-    </header>
+      </template>
+    </AppHeader>
 
-    <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-8">
+    <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-10 space-y-10">
       <!-- Stats cards -->
       <section>
-        <h2 class="text-gray-900 dark:text-white font-medium mb-3">Overview</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div v-for="card in statCards" :key="card.label" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-            <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ card.value }}</div>
-            <div class="text-xs text-gray-500 mt-1">{{ card.label }}</div>
+        <h2 class="section-title mb-3">Overview</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div v-for="card in statCards" :key="card.label" class="card p-4">
+            <div :class="card.accent" class="w-7 h-7 rounded-lg flex items-center justify-center mb-2" v-html="card.icon"></div>
+            <div class="text-xl font-semibold text-gray-900 dark:text-white tracking-tight tabular-nums">{{ card.value }}</div>
+            <div class="text-xs text-gray-500 mt-0.5">{{ card.label }}</div>
           </div>
         </div>
       </section>
 
       <!-- Browser extension settings -->
       <section v-if="settings">
-        <h2 class="text-gray-900 dark:text-white font-medium mb-3">Browser extension</h2>
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 space-y-4 max-w-2xl">
+        <h2 class="section-title mb-3">Browser extension</h2>
+        <div class="card p-5 space-y-4 max-w-2xl">
           <label class="flex items-center justify-between gap-4">
             <span class="text-sm text-gray-700 dark:text-gray-300">Extension enabled
-              <span class="block text-xs text-gray-500">Master switch — when off, the extension stops polling and clears its badge.</span>
+              <span class="block text-xs text-gray-500 font-normal mt-0.5">Master switch — when off, the extension stops polling and clears its badge.</span>
             </span>
-            <input type="checkbox" v-model="settings.extension_enabled" class="h-4 w-4 accent-indigo-600" />
+            <input type="checkbox" v-model="settings.extension_enabled" class="h-4 w-4 accent-brand-600 shrink-0" />
           </label>
           <label class="flex items-center justify-between gap-4">
             <span class="text-sm text-gray-700 dark:text-gray-300">Desktop notifications
-              <span class="block text-xs text-gray-500">Pop a notification when a new request arrives.</span>
+              <span class="block text-xs text-gray-500 font-normal mt-0.5">Pop a notification when a new request arrives.</span>
             </span>
-            <input type="checkbox" v-model="settings.extension_notifications" class="h-4 w-4 accent-indigo-600" />
+            <input type="checkbox" v-model="settings.extension_notifications" class="h-4 w-4 accent-brand-600 shrink-0" />
           </label>
           <label class="flex items-center justify-between gap-4">
             <span class="text-sm text-gray-700 dark:text-gray-300">Unread badge
-              <span class="block text-xs text-gray-500">Show a count of new requests on the extension icon.</span>
+              <span class="block text-xs text-gray-500 font-normal mt-0.5">Show a count of new requests on the extension icon.</span>
             </span>
-            <input type="checkbox" v-model="settings.extension_badge" class="h-4 w-4 accent-indigo-600" />
+            <input type="checkbox" v-model="settings.extension_badge" class="h-4 w-4 accent-brand-600 shrink-0" />
           </label>
           <label class="flex items-center justify-between gap-4">
             <span class="text-sm text-gray-700 dark:text-gray-300">Poll interval (seconds)
-              <span class="block text-xs text-gray-500">How often the extension checks for new requests. Chrome enforces a ~30s floor.</span>
+              <span class="block text-xs text-gray-500 font-normal mt-0.5">How often the extension checks for new requests. Chrome enforces a ~30s floor.</span>
             </span>
-            <input type="number" min="15" max="3600" v-model.number="settings.extension_poll_interval"
-              class="w-24 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded px-2 py-1 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500" />
+            <input type="number" min="15" max="3600" v-model.number="settings.extension_poll_interval" class="input w-24 !py-1 shrink-0" />
           </label>
           <label class="flex items-center justify-between gap-4">
             <span class="text-sm text-gray-700 dark:text-gray-300">App URL
-              <span class="block text-xs text-gray-500">Where the extension's “open in app” links point.</span>
+              <span class="block text-xs text-gray-500 font-normal mt-0.5">Where the extension's “open in app” links point.</span>
             </span>
-            <input type="url" v-model="settings.app_url" placeholder="http://localhost:5173"
-              class="w-64 bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded px-2 py-1 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500" />
+            <input type="url" v-model="settings.app_url" placeholder="http://localhost:5173" class="input w-64 !py-1 shrink-0" />
           </label>
 
-          <div class="flex items-center gap-3 pt-1">
-            <button @click="saveSettings" :disabled="savingSettings"
-              class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded transition-colors">
+          <div class="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <button @click="saveSettings" :disabled="savingSettings" class="btn-primary btn-sm">
               {{ savingSettings ? 'Saving…' : 'Save settings' }}
             </button>
-            <span v-if="settingsSaved" class="text-xs text-green-600 dark:text-green-400">Saved ✓</span>
+            <span v-if="settingsSaved" class="badge-green">Saved</span>
             <span v-if="settingsError" class="text-xs text-red-500 dark:text-red-400">{{ settingsError }}</span>
           </div>
         </div>
@@ -77,18 +72,18 @@
 
       <!-- Plan reference -->
       <section v-if="plans">
-        <h2 class="text-gray-900 dark:text-white font-medium mb-3">Plans</h2>
+        <h2 class="section-title mb-3">Plans</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div v-for="(p, key) in plans" :key="key" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 space-y-1.5">
+          <div v-for="(p, key) in plans" :key="key" class="card p-4 space-y-2">
             <div class="flex items-center justify-between">
-              <span class="font-medium text-gray-900 dark:text-white capitalize">{{ p.label || key }}</span>
-              <span class="text-xs text-gray-500">{{ stats?.users_by_plan?.[key] ?? 0 }} users</span>
+              <span class="font-semibold text-gray-900 dark:text-white capitalize">{{ p.label || key }}</span>
+              <span class="badge-neutral">{{ stats?.users_by_plan?.[key] ?? 0 }} users</span>
             </div>
-            <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-              <li>{{ fmtLimit(p.max_endpoints) }} URLs</li>
-              <li>{{ fmtLimit(p.request_limit) }} requests / URL</li>
-              <li>{{ p.retention_days === null ? 'Forever' : p.retention_days + '-day' }} retention</li>
-              <li>Custom responses: {{ p.custom_responses ? 'yes' : 'no' }}</li>
+            <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+              <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>{{ fmtLimit(p.max_endpoints) }} URLs</li>
+              <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>{{ fmtLimit(p.request_limit) }} requests / URL</li>
+              <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>{{ p.retention_days === null ? 'Forever' : p.retention_days + '-day' }} retention</li>
+              <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>Custom responses: {{ p.custom_responses ? 'yes' : 'no' }}</li>
             </ul>
           </div>
         </div>
@@ -96,40 +91,33 @@
 
       <!-- Users -->
       <section>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-gray-900 dark:text-white font-medium">Users</h2>
-          <input
-            v-model="userQuery"
-            @input="debouncedLoadUsers"
-            type="search"
-            placeholder="Search email…"
-            class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-3 py-1.5 text-xs text-gray-900 dark:text-white w-56 focus:outline-none focus:border-indigo-500"
-          />
+        <div class="flex flex-wrap items-center gap-2 justify-between mb-3">
+          <h2 class="section-title">Users</h2>
+          <div class="relative">
+            <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input v-model="userQuery" @input="debouncedLoadUsers" type="search" placeholder="Search email…" class="input !py-1.5 pl-8 w-56 text-xs" />
+          </div>
         </div>
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="text-xs text-gray-500 border-b border-gray-200 dark:border-gray-800">
+            <thead class="text-xs text-gray-500 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-white/[0.02]">
               <tr>
-                <th class="text-left font-medium px-4 py-2">Email</th>
-                <th class="text-left font-medium px-4 py-2">Plan</th>
-                <th class="text-left font-medium px-4 py-2">Status</th>
-                <th class="text-right font-medium px-4 py-2">URLs</th>
-                <th class="text-right font-medium px-4 py-2">Joined</th>
+                <th class="text-left font-medium px-4 py-2.5">Email</th>
+                <th class="text-left font-medium px-4 py-2.5">Plan</th>
+                <th class="text-left font-medium px-4 py-2.5">Status</th>
+                <th class="text-right font-medium px-4 py-2.5">URLs</th>
+                <th class="text-right font-medium px-4 py-2.5">Joined</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="u in users" :key="u.id" class="border-b border-gray-100 dark:border-gray-800/60 last:border-0">
+              <tr v-for="u in users" :key="u.id" class="border-b border-gray-100 dark:border-gray-800/60 last:border-0 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors">
                 <td class="px-4 py-2.5 text-gray-900 dark:text-gray-200">
                   {{ u.email }}
-                  <span v-if="u.is_admin" class="ml-1 text-xs px-1 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">admin</span>
+                  <span v-if="u.is_admin" class="ml-1 badge-brand">admin</span>
                 </td>
                 <td class="px-4 py-2.5">
-                  <select
-                    :value="u.plan"
-                    @change="changePlan(u, $event.target.value)"
-                    :disabled="savingId === u.id"
-                    class="bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded px-2 py-1 text-xs text-gray-900 dark:text-white capitalize focus:outline-none focus:border-indigo-500"
-                  >
+                  <select :value="u.plan" @change="changePlan(u, $event.target.value)" :disabled="savingId === u.id" class="input !py-1 !px-2 text-xs capitalize w-auto">
                     <option v-for="(p, key) in plans" :key="key" :value="key">{{ p.label || key }}</option>
                   </select>
                 </td>
@@ -137,66 +125,62 @@
                   <button
                     @click="toggleStatus(u)"
                     :disabled="savingId === u.id"
-                    :class="u.status === 'active'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300'
-                      : 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'"
-                    class="text-xs px-2 py-1 rounded transition-colors"
+                    :class="u.status === 'active' ? 'badge-green' : 'badge-red'"
+                    class="hover:brightness-95 dark:hover:brightness-125 transition-all"
                   >
                     {{ u.status === 'active' ? 'Active' : 'Suspended' }}
                   </button>
                 </td>
-                <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300">{{ u.endpoints_count }}</td>
+                <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300 tabular-nums">{{ u.endpoints_count }}</td>
                 <td class="px-4 py-2.5 text-right text-gray-500 text-xs">{{ fmtDate(u.created_at) }}</td>
               </tr>
               <tr v-if="!users.length">
-                <td colspan="5" class="px-4 py-8 text-center text-gray-400 dark:text-gray-600 text-xs">No users found.</td>
+                <td colspan="5" class="px-4 py-10 text-center text-gray-400 dark:text-gray-600 text-xs">No users found.</td>
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </section>
 
       <!-- Endpoints -->
       <section>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-gray-900 dark:text-white font-medium">All endpoints</h2>
-          <input
-            v-model="endpointQuery"
-            @input="debouncedLoadEndpoints"
-            type="search"
-            placeholder="Search token / label…"
-            class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded px-3 py-1.5 text-xs text-gray-900 dark:text-white w-56 focus:outline-none focus:border-indigo-500"
-          />
+        <div class="flex flex-wrap items-center gap-2 justify-between mb-3">
+          <h2 class="section-title">All endpoints</h2>
+          <div class="relative">
+            <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input v-model="endpointQuery" @input="debouncedLoadEndpoints" type="search" placeholder="Search token / label…" class="input !py-1.5 pl-8 w-56 text-xs" />
+          </div>
         </div>
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="text-xs text-gray-500 border-b border-gray-200 dark:border-gray-800">
+            <thead class="text-xs text-gray-500 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-white/[0.02]">
               <tr>
-                <th class="text-left font-medium px-4 py-2">URL token</th>
-                <th class="text-left font-medium px-4 py-2">Owner</th>
-                <th class="text-left font-medium px-4 py-2">Type</th>
-                <th class="text-right font-medium px-4 py-2">Requests</th>
-                <th class="text-right font-medium px-4 py-2">Last activity</th>
+                <th class="text-left font-medium px-4 py-2.5">URL token</th>
+                <th class="text-left font-medium px-4 py-2.5">Owner</th>
+                <th class="text-left font-medium px-4 py-2.5">Type</th>
+                <th class="text-right font-medium px-4 py-2.5">Requests</th>
+                <th class="text-right font-medium px-4 py-2.5">Last activity</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="e in endpoints" :key="e.token" class="border-b border-gray-100 dark:border-gray-800/60 last:border-0">
+              <tr v-for="e in endpoints" :key="e.token" class="border-b border-gray-100 dark:border-gray-800/60 last:border-0 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors">
                 <td class="px-4 py-2.5 font-mono text-xs text-gray-900 dark:text-gray-200">
                   {{ e.token }}
                   <span v-if="e.label" class="text-gray-400">· {{ e.label }}</span>
                 </td>
                 <td class="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs">{{ e.owner_email || 'guest' }}</td>
-                <td class="px-4 py-2.5">
-                  <span class="text-xs px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400">{{ e.type }}</span>
-                </td>
-                <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300">{{ e.request_count }}</td>
+                <td class="px-4 py-2.5"><span class="badge-neutral capitalize">{{ e.type }}</span></td>
+                <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300 tabular-nums">{{ e.request_count }}</td>
                 <td class="px-4 py-2.5 text-right text-gray-500 text-xs">{{ e.last_activity_at ? fmtDate(e.last_activity_at) : '—' }}</td>
               </tr>
               <tr v-if="!endpoints.length">
-                <td colspan="5" class="px-4 py-8 text-center text-gray-400 dark:text-gray-600 text-xs">No endpoints found.</td>
+                <td colspan="5" class="px-4 py-10 text-center text-gray-400 dark:text-gray-600 text-xs">No endpoints found.</td>
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </section>
     </main>
@@ -207,7 +191,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminApi } from '@/api/admin'
-import ThemeToggle from '@/components/ThemeToggle.vue'
+import AppHeader from '@/components/AppHeader.vue'
 
 const router = useRouter()
 
@@ -224,13 +208,22 @@ const savingSettings = ref(false)
 const settingsSaved  = ref(false)
 const settingsError  = ref('')
 
+const ICON = {
+  users:     '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-2.26a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>',
+  suspended: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 105.636 5.636a9 9 0 0012.728 12.728zM5.636 5.636l12.728 12.728" /></svg>',
+  endpoints: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5M10.172 13.828a4 4 0 010-5.656l3-3a4 4 0 015.656 5.656l-1.5 1.5" /></svg>',
+  guest:     '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>',
+  total:     '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0l-2.5 5.5a2 2 0 01-1.8 1.5H8.3a2 2 0 01-1.8-1.5L4 13m16 0h-4l-1 2h-6l-1-2H4" /></svg>',
+  today:     '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>',
+}
+
 const statCards = computed(() => stats.value ? [
-  { label: 'Users',            value: stats.value.users_total },
-  { label: 'Suspended',        value: stats.value.users_suspended },
-  { label: 'Endpoints',        value: stats.value.endpoints_total },
-  { label: 'Guest endpoints',  value: stats.value.endpoints_guest },
-  { label: 'Requests total',   value: stats.value.requests_total },
-  { label: 'Requests today',   value: stats.value.requests_today },
+  { label: 'Users',           value: stats.value.users_total,     icon: ICON.users,     accent: 'bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400' },
+  { label: 'Suspended',       value: stats.value.users_suspended, icon: ICON.suspended, accent: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' },
+  { label: 'Endpoints',       value: stats.value.endpoints_total, icon: ICON.endpoints, accent: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  { label: 'Guest endpoints', value: stats.value.endpoints_guest, icon: ICON.guest,     accent: 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+  { label: 'Requests total',  value: stats.value.requests_total,  icon: ICON.total,     accent: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  { label: 'Requests today',  value: stats.value.requests_today,  icon: ICON.today,     accent: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' },
 ] : [])
 
 onMounted(async () => {

@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Endpoint;
 use App\Models\WebhookRequest;
+use App\Services\ReplayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class RequestController extends Controller
 {
+    public function __construct(private ReplayService $replay) {}
+
     /**
      * List captured requests for an endpoint, newest first.
      *
@@ -95,6 +98,28 @@ class RequestController extends Controller
         $this->syncCount($endpoint);
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * Resend a captured request to a real URL, unchanged (same method,
+     * headers, body). Ephemeral — the result isn't stored as a new capture,
+     * it's just handed back to the caller for inspection.
+     */
+    public function replay(Request $request, string $token, string $requestId): JsonResponse
+    {
+        $endpoint = $this->findAuthorized($request, $token);
+
+        $webhookRequest = $endpoint->webhookRequests()
+            ->where('id', $requestId)
+            ->firstOrFail();
+
+        $data = $request->validate([
+            'target_url' => 'required|string|max:2048',
+        ]);
+
+        $result = $this->replay->replay($webhookRequest, $data['target_url']);
+
+        return response()->json(['data' => $result]);
     }
 
     // Keep the denormalized counter honest after deletions. Set the attribute

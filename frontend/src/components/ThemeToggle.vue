@@ -2,7 +2,8 @@
   <button
     @click="themeStore.toggle()"
     :title="themeStore.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-    class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+    class="flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:text-gray-900
+           dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
   >
     <!-- Sun (shown in dark mode → click for light) -->
     <svg v-if="themeStore.theme === 'dark'" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

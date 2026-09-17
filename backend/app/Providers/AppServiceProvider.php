@@ -50,5 +50,19 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute((int) config('app.create_limit', 20))
                 ->by($request->user()?->id ?: $request->ip());
         });
+
+        // ── Replay ───────────────────────────────────────────────────────────
+        // Each replay is an outbound request we make on the caller's behalf —
+        // keep this tighter than the general API limit so it can't be used to
+        // hammer a third party. Keyed by principal (user or guest session),
+        // falling back to IP for unauthenticated callers with no session yet.
+        RateLimiter::for('replay', function (Request $request) {
+            $key = $request->user()?->id
+                ?? $request->cookie('guest_session_id')
+                ?? $request->header('X-Guest-Session')
+                ?? $request->ip();
+
+            return Limit::perMinute((int) config('app.replay_limit_per_minute', 20))->by($key);
+        });
     }
 }

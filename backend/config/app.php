@@ -30,4 +30,11 @@ return [
     // Guest endpoints: days until the URL and all its data are deleted.
     'guest_retention_days' => (int) env('GUEST_RETENTION_DAYS', 2),
 
+    // ── Replay ────────────────────────────────────────────────────────────────
+    // Resending a captured request to a real URL. Kept tight since this makes
+    // the server issue outbound requests on the caller's behalf (SSRF surface).
+    'replay_limit_per_minute'    => (int) env('REPLAY_LIMIT_PER_MINUTE', 20),
+    'replay_timeout_seconds'     => (int) env('REPLAY_TIMEOUT_SECONDS', 10),
+    'replay_max_response_bytes'  => (int) env('REPLAY_MAX_RESPONSE_BYTES', 65536),
+
 ];

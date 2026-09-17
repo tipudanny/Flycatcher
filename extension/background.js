@@ -21,20 +21,18 @@ chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === ALARM) poll();
 });
 
-chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+chrome.runtime.onMessage.addListener((msg) => {
   // Side panel signals it was opened → clear the unread badge.
   if (msg === 'reset-unread') {
     chrome.storage.local.set({ unread: 0 });
     clearBadge();
-    reply?.({ ok: true });
-  }
-  // Content script detected a Flycatcher page → auto-configure the URL and
-  // adopt the logged-in session, so the same browser shows the same data.
-  if (msg && msg.type === 'flycatcher') {
+  } else if (msg && msg.type === 'flycatcher') {
+    // Content script detected a Flycatcher page → auto-configure the URL and
+    // adopt the logged-in session, so the same browser shows the same data.
     adoptFlycatcher(msg.origin, msg.token);
-    reply?.({ ok: true });
   }
-  return true;
+  // Fire-and-forget: no async response, so we don't return true (that's what
+  // triggered the "message channel closed" warning).
 });
 
 async function adoptFlycatcher(origin, token) {
