@@ -2,9 +2,9 @@
 webhooks fly in, you catch and examine them
 
 
-A self-hosted webhook inspection tool — capture, inspect, and live-tail any HTTP request.
+A self-hosted webhook inspection tool — capture, inspect, live-tail, and replay any HTTP request.
 
-**Stack:** Laravel 11 · Vue 3 + Vite · MySQL · Firebase Realtime DB (live-tail only) · Chrome extension (MV3)
+**Stack:** Laravel 11 · Vue 3 + Vite · MySQL · Chrome extension (MV3)
 
 ---
 
@@ -13,12 +13,19 @@ A self-hosted webhook inspection tool — capture, inspect, and live-tail any HT
 ### Capture & inspect
 - **Universal capture endpoint** — `http://localhost:8000/event/hooks/{token}` accepts any HTTP method, arbitrary sub-paths (`/{token}/github/push`), and query strings.
 - **Pure observer** — never parses or validates payloads (JSON, form-data, binary, anything). Body size-capped at 10 MB (oversized → `413`).
-- **Two-pane inspector** — request list + full detail: method, path, timestamp, client IP, content-type, size.
-- **Rich detail** — headers table, parsed query params, and body shown **pretty** (auto-formatted JSON) and **raw**, with copy.
+- **Two-pane inspector** — request list + full detail: method, path, timestamp, client IP, content-type, size. Collapses to a single pane on mobile (list ⇄ detail, with a back button).
+- **Rich detail** — headers table, parsed query params, and body shown **pretty** (auto-formatted JSON) and **raw**. Click-to-copy on the received timestamp, client IP, and body.
+- **List pagination** — "Load more" loads older requests beyond the first page instead of only ever showing the newest batch.
+
+### Replay
+- **Resend any captured request** to a real URL — same method, headers, and body, exactly as originally received. Useful for retesting a fix without waiting for the sender to fire the webhook again.
+- **SSRF-safe by design**: only `http(s)` targets; the target host is DNS-resolved and rejected unless *every* resolved IP is publicly routable (blocks loopback, private ranges, and link-local — including the `169.254.169.254` cloud metadata endpoint); the connection is pinned to the validated IP (via `CURLOPT_RESOLVE`) so DNS can't be swapped between the check and the request; redirects are never followed; the response body is streamed and capped (default 64 KB) instead of buffered in full.
+- **Its own rate limit**, separate from the general API limit, since each replay is an outbound request made on the caller's behalf.
+- The result (status, duration, response body, truncation flag) is shown inline — nothing is persisted as a new capture.
 
 ### Real-time live-tail
-- New requests appear **instantly** with no refresh, via Firebase Realtime Database; a green **Live** indicator shows the connection.
-- **Degrades gracefully** — without Firebase credentials, capture still works; only the auto-refresh is disabled. MySQL is always the source of truth.
+- New requests appear **automatically** via lightweight polling (`useLiveTail` composable, ~4s interval) — no external service required, works out of the box on any self-hosted install. A green **Live** indicator shows it's active.
+- MySQL is always the source of truth; live-tail just re-fetches and merges anything new.
 
 ### Guest mode (no signup)
 - **Try as guest** mints a webhook URL instantly, tied to a browser cookie.
@@ -32,7 +39,7 @@ A self-hosted webhook inspection tool — capture, inspect, and live-tail any HT
 - **Custom vanity URLs** — registered users pick their own slug (`/event/hooks/my-github-hook`), unique and **renamable** (old URL 404s immediately).
 - **Dashboard** — create, list, open, and clear endpoints with counts and last-activity.
 
-### Plans & limits (`config/plans.php`)
+### Plans & limits — editable live from the admin panel
 | | Free | Pro | Team |
 |---|---|---|---|
 | Max URLs | 3 | 25 | ∞ |
@@ -40,12 +47,15 @@ A self-hosted webhook inspection tool — capture, inspect, and live-tail any HT
 | Retention | 7 days | 30 days | forever |
 | Custom responses | no | yes | yes |
 
-Enforced on creation (max URLs), on capture (per-URL request limit), and on retention (old requests pruned per plan, freeing quota).
+The table above is just the shipped defaults (`config/plans.php`). An admin can edit any tier's label, limits, or custom-response flag from **Admin → Plans → Edit** — the change is stored as a DB override (`App\Support\Plans`, backed by the existing `settings` key-value store) and takes effect **immediately** for every user on that plan, no deploy or cache clear. Limits are enforced on creation (max URLs), on capture (per-URL request limit), and on retention (old requests pruned per plan, freeing quota).
 
 ### Admin dashboard / backoffice
 - **Overview stats** — users, suspended, endpoints, guest endpoints, requests total/today.
-- **User management** — change plan, suspend/activate (suspended users can't log in).
-- **All-endpoints view** across users; both tables search-as-you-type.
+- **User management** — change plan, suspend/activate. A suspended user is locked out three ways: can't log in, their endpoints stop accepting new webhooks (silent 404, same as a nonexistent endpoint), and they lose access to their own endpoint data immediately — even with a bearer token issued before the suspension.
+- **Full endpoint management, for *any* endpoint** — admins can view, edit (label/slug), and delete every endpoint in the system, not just their own. This reuses the same owner-scoped routes everyone else uses (an admin bypass in `Endpoint::canBeViewedBy()`), so it's the exact same tested code path, not a parallel admin-only implementation.
+- **Editable plan tiers** — see "Plans & limits" above.
+- **Paginated tables** — Users and Endpoints tables are server-paginated with a selectable page size (10/25/50/100) and a "Showing X–Y of Z" summary, not just a raw list.
+- **Search-as-you-type** on both tables.
 - **Access control** — admin-only API (`401`/`403`), router guard, admin-only nav link.
 - **First admin** — `php artisan user:make-admin {email}` (with `--revoke`).
 - **Extension settings panel** — enable/disable, notifications, badge, poll interval, app URL.
@@ -57,14 +67,18 @@ Enforced on creation (max URLs), on capture (per-URL request limit), and on rete
 - **Zero-setup guest support** — reads the `guest_session_id` cookie to auto-discover the browser's guest URLs; registered users sign in with email/password.
 - **Admin-controlled config** — behaviour driven by the backoffice settings. See [extension/README.md](extension/README.md).
 
-### Theming & branding
-- **Dark/light theme** toggle, persisted, defaulting to OS preference — across the app and extension.
-- **Flycatcher branding** — custom swallow logo as app mark, favicon, and extension icon.
+### Design
+- Self-hosted **Inter** (UI) + **JetBrains Mono** (code/data) fonts via `@fontsource` — no external font requests.
+- A small shared component system (buttons, cards, badges, inputs, colored icon chips) rather than one-off utility classes per page.
+- Split-screen auth pages, a two-column request-detail layout (body/headers as the main content, metadata/replay/query-params as a sidebar), and a responsive two-pane inspector that collapses cleanly on mobile.
+- Dark/light theme, persisted, defaulting to OS preference.
 
 ### Security
 - **Tenant isolation at the query layer** — every read scoped through an authorized endpoint (IDOR-guarded); 404 (not 403) to avoid leaking token existence.
 - **High-entropy tokens** (128-bit); internal UUIDs never appear in URLs.
 - **Per-token rate limiting** on ingestion; CSRF-exempt capture routes.
+- **SSRF-hardened replay** — see "Replay" above.
+- **Suspended-account enforcement at the data layer**, not just at login — see "Admin dashboard" above.
 
 ---
 
@@ -77,48 +91,29 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-### 2. Set up Firebase
+### 2. Configure `backend/.env`
 
-1. Create a project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Enable **Realtime Database** (Start in test mode → change rules later)
-3. **Service account** (for Laravel backend):
-   - Project Settings → Service Accounts → Generate new private key
-   - Save the JSON as `backend/storage/firebase-credentials.json`
-   - Add this path to `.gitignore` — **never commit credentials**
-4. **Web app config** (for Vue frontend):
-   - Project Settings → Your apps → Add web app (or use existing)
-   - Copy the config values into `frontend/.env`
-5. In `backend/.env`, set:
-   ```
-   FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
-   ```
+Point `DB_*` at a local MySQL instance and set `APP_KEY` (`php artisan key:generate`). That's it for live-tail — it's polling-based and needs no external service. Firebase env vars are still read if present (`FIREBASE_CREDENTIALS`, `FIREBASE_DATABASE_URL`) but are entirely optional legacy hooks; capture and live-tail both work fully without them.
 
-### 3. Configure `backend/.env`
+### 3. Install & run
 
-```
-APP_KEY=         ← fill in after step 4
-DB_HOST=db
-DB_DATABASE=webhook_inspector
-DB_USERNAME=webhook
-DB_PASSWORD=secret
-FIREBASE_CREDENTIALS=storage/firebase-credentials.json
-FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
-```
-
-### 4. Start everything
+Either with Docker:
 
 ```bash
 docker-compose up -d
+docker-compose exec php php artisan key:generate
+docker-compose exec php php artisan migrate
 ```
 
-Wait ~30 seconds for MySQL to initialise, then:
+...or directly (what local development actually runs day to day):
 
 ```bash
-# Generate app key
-docker-compose exec php php artisan key:generate
+# backend
+cd backend && composer install && php artisan migrate
+php artisan serve --port=8000
 
-# Run migrations
-docker-compose exec php php artisan migrate
+# frontend (separate terminal)
+cd frontend && npm install && npm run dev
 ```
 
 **URLs:**
@@ -130,63 +125,37 @@ docker-compose exec php php artisan migrate
 
 ---
 
-## Firebase Security Rules
-
-After testing, lock down the Realtime Database so only your backend can write
-and clients cannot read arbitrary paths.
-
-```json
-{
-  "rules": {
-    "endpoints": {
-      "$endpointId": {
-        "latest": {
-          ".read":  false,
-          ".write": false
-        }
-      }
-    }
-  }
-}
-```
-
-> The Vue app reads via `onValue()` which requires `.read` access on the path.
-> For production, use Firebase App Check or restrict reads to authenticated
-> Firebase users. For local dev, leaving rules open is fine.
-
----
-
 ## Architecture
 
 ```
 browser / 3rd-party service
        │
        ├── POST /event/hooks/<token>  ──▶  IngestController (no auth)
-       │                              │ persist to MySQL
-       │                              └── push signal to Firebase /endpoints/{id}/latest
+       │                              └── persist to MySQL (source of truth)
        │
        └── /api/*           ──▶  App API (Sanctum auth)
-                                     │ scoped reads: endpoint → requests
-                                     └── MySQL (source of truth)
+                                     ├── scoped reads: endpoint → requests
+                                     ├── Replay: SSRF-checked outbound request
+                                     └── MySQL
 
 Vue frontend
-  ├── Pinia stores (auth, endpoints)
-  ├── useFirebaseLiveTail composable  ──▶  Firebase Realtime DB (live events only)
-  └── axios API client               ──▶  Laravel API
+  ├── Pinia stores (auth, endpoints, theme)
+  ├── useLiveTail composable          ──▶  polls the API on an interval
+  └── axios API client                ──▶  Laravel API
 ```
 
 **Key design rules:**
 - Isolation is enforced at the query layer, never in the UI. Every request read is scoped through an authorized `endpoint_id`.
 - Tokens (in URLs) are high-entropy (128 bits). Internal UUIDs are never exposed in URLs.
-- Firebase only carries a lightweight trigger signal. All data lives in MySQL.
 - Ingestion never parses the body — it's a pure observer. Size-capped at 10 MB.
+- Plan limits and admin-editable settings are read through `App\Support\Plans` / `App\Models\Setting`, never `config()` directly, so edits from the admin panel apply immediately with no deploy.
 
 ---
 
 ## Project structure
 
 ```
-webhook-inspector/
+webhook inspector/
 ├── backend/                Laravel 11 API
 │   ├── app/
 │   │   ├── Console/Commands/
@@ -197,23 +166,26 @@ webhook-inspector/
 │   │   │   │   ├── Auth/AuthController.php   register, login, logout, claim
 │   │   │   │   ├── IngestController.php      capture endpoint (no auth)
 │   │   │   │   ├── EndpointController.php    CRUD for webhook URLs + limits
-│   │   │   │   ├── RequestController.php     tenant-scoped request reads
-│   │   │   │   ├── AdminController.php       stats, users, endpoints, settings
+│   │   │   │   ├── RequestController.php     tenant-scoped reads + Replay
+│   │   │   │   ├── AdminController.php       stats, users, endpoints, plans, settings
 │   │   │   │   └── ExtensionController.php   public extension config
 │   │   │   └── Middleware/EnsureAdmin.php
 │   │   ├── Models/
 │   │   │   ├── User.php                  plan/status/is_admin + plan helpers
-│   │   │   ├── Endpoint.php              token gen, auth + limit helpers
+│   │   │   ├── Endpoint.php              token gen, auth (incl. admin bypass) + limit helpers
 │   │   │   ├── WebhookRequest.php        ULID PK, raw body, parsed helpers
-│   │   │   └── Setting.php               key/value app settings
-│   │   └── Services/FirebaseService.php  pushNewRequest() → Realtime DB
+│   │   │   └── Setting.php               key/value app settings (also backs plan overrides)
+│   │   ├── Services/
+│   │   │   ├── FirebaseService.php       optional legacy live-tail push (inert if unconfigured)
+│   │   │   └── ReplayService.php         SSRF-safe outbound replay
+│   │   └── Support/Plans.php             merges DB plan overrides over config/plans.php
 │   ├── config/{plans.php, app.php, firebase.php}
 │   ├── database/migrations/
 │   └── routes/{api.php, web.php, console.php}
 │
 ├── frontend/               Vue 3 + Vite SPA
 │   └── src/
-│       ├── composables/useFirebaseLiveTail.js   live-tail subscription
+│       ├── composables/useLiveTail.js    polling-based live-tail
 │       ├── stores/{auth, endpoints, theme}.js
 │       ├── api/{client, endpoints, admin}.js
 │       ├── pages/
@@ -222,7 +194,7 @@ webhook-inspector/
 │       │   ├── EndpointDetailPage.vue    two-pane inspector (auth)
 │       │   ├── InspectPage.vue           public guest view
 │       │   └── AdminPage.vue             admin dashboard / backoffice
-│       └── components/{RequestDetail, ThemeToggle}.vue
+│       └── components/{AppHeader, RequestDetail, ThemeToggle}.vue
 │
 ├── extension/              Chrome extension (MV3)
 │   ├── manifest.json
@@ -242,17 +214,27 @@ webhook-inspector/
 
 ```bash
 # Watch Laravel logs
-docker-compose logs -f php
+tail -f backend/storage/logs/laravel.log
 
 # Run a migration
-docker-compose exec php php artisan migrate
+cd backend && php artisan migrate
 
-# Tinker
-docker-compose exec php php artisan tinker
-
-# Rebuild PHP container after composer.json changes
-docker-compose up -d --build php
+# Rebuild the frontend for production
+cd frontend && npm run build
 ```
+
+If using Docker instead, the equivalent commands are `docker-compose exec php ...` / `docker-compose logs -f php`.
+
+---
+
+## Deployment
+
+Production runs on Namecheap shared hosting (`flycatcher.site`), where shell access is disabled but SFTP/key-based SSH works. There's no CI pipeline — deploys are a manual two-part upload:
+
+1. **Backend**: upload only the changed PHP files to their matching path under the remote Laravel root. `vendor/` only needs re-syncing if `composer.json`/`composer.lock` changed.
+2. **Frontend**: `npm run build` locally, then upload `dist/` contents into the remote `public/` directory (alongside Laravel's `index.php` and `.htaccess`, which live there too).
+
+No database migration or cache-clear step is needed for most deploys — the server has no `bootstrap/cache/config.php` or route cache, so PHP source changes take effect on the next request.
 
 ---
 
@@ -260,20 +242,20 @@ docker-compose up -d --build php
 
 Implemented:
 
-- [x] Rate limiting on ingestion routes (`throttle:ingest` in `AppServiceProvider`)
+- [x] Rate limiting on ingestion, replay, and general API routes
 - [x] Request retention (`endpoints:expire` — guest deletion + per-plan pruning, scheduled hourly)
-- [x] Plan-based limits (max URLs, requests per URL, retention window, custom-response gating)
+- [x] Plan-based limits (max URLs, requests per URL, retention window, custom-response gating) — **editable live from the admin panel**
 - [x] Guest mode (one URL/browser, 200-request cap, 2-day retention)
 - [x] Custom vanity URLs for registered users
-- [x] Admin dashboard / backoffice (users, plans, stats, settings)
+- [x] Per-endpoint custom response (status code, body, headers) — gated by plan, applied at ingest
+- [x] Replay — resend a captured request to a real URL, SSRF-safe
+- [x] Admin dashboard / backoffice (users, endpoints, plans, stats, settings) with full CRUD on any endpoint, paginated tables, and suspend enforcement at the data layer
 - [x] Chrome extension (notifications, badge, side-panel inspector, create URL)
-- [x] Dark / light theme
+- [x] Dark / light theme, redesigned UI
 
 Still open:
 
-- [ ] Per-endpoint custom response (status code, body, headers) — gating is in place; UI + ingest application pending
-- [ ] Firebase security rules for production (see section above)
-- [ ] Admin-editable plan tiers from the UI (currently `config/plans.php`)
+- [ ] Firebase security rules — only relevant if you opt back into `FIREBASE_CREDENTIALS`/`FIREBASE_DATABASE_URL`; unused by default now that live-tail is polling-based
 - [ ] Extension scheduler note: run `php artisan schedule:work` (or a cron `schedule:run`) for retention to fire
 
 > **Note:** the schedule for `endpoints:expire` only runs if Laravel's scheduler is active —
