@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Plans;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -61,11 +62,11 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function planLimit(string $key): ?int
     {
-        return config("plans.{$this->plan}.{$key}");
+        return Plans::limit($this->plan, $key);
     }
 
     public function allowsCustomResponses(): bool
     {
-        return (bool) config("plans.{$this->plan}.custom_responses", false);
+        return (bool) Plans::limit($this->plan, 'custom_responses');
     }
 }

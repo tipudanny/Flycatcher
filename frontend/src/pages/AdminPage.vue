@@ -70,21 +70,56 @@
         </div>
       </section>
 
-      <!-- Plan reference -->
+      <!-- Plans -->
       <section v-if="plans">
         <h2 class="section-title mb-3">Plans</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div v-for="(p, key) in plans" :key="key" class="card p-4 space-y-2">
+          <div v-for="(p, key) in plans" :key="key" class="card p-4 space-y-3">
             <div class="flex items-center justify-between">
               <span class="font-semibold text-gray-900 dark:text-white capitalize">{{ p.label || key }}</span>
               <span class="badge-neutral">{{ stats?.users_by_plan?.[key] ?? 0 }} users</span>
             </div>
-            <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+
+            <ul v-if="editingPlan !== key" class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
               <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>{{ fmtLimit(p.max_endpoints) }} URLs</li>
               <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>{{ fmtLimit(p.request_limit) }} requests / URL</li>
               <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>{{ p.retention_days === null ? 'Forever' : p.retention_days + '-day' }} retention</li>
               <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>Custom responses: {{ p.custom_responses ? 'yes' : 'no' }}</li>
             </ul>
+
+            <div v-else class="space-y-2.5">
+              <div>
+                <label class="field-label">Label</label>
+                <input v-model="planForm.label" class="input !py-1 !px-2 text-xs w-full" />
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="field-label">Max URLs</label>
+                  <input v-model="planForm.max_endpoints" type="number" min="0" placeholder="Unlimited" class="input !py-1 !px-2 text-xs w-full" />
+                </div>
+                <div>
+                  <label class="field-label">Requests / URL</label>
+                  <input v-model="planForm.request_limit" type="number" min="0" placeholder="Unlimited" class="input !py-1 !px-2 text-xs w-full" />
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Retention (days)</label>
+                <input v-model="planForm.retention_days" type="number" min="0" placeholder="Forever" class="input !py-1 !px-2 text-xs w-full" />
+              </div>
+              <label class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                <input type="checkbox" v-model="planForm.custom_responses" class="h-3.5 w-3.5 accent-brand-600" />
+                Custom responses
+              </label>
+              <p v-if="planError" class="text-xs text-red-500 dark:text-red-400">{{ planError }}</p>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <template v-if="editingPlan === key">
+                <button @click="savePlan(key)" :disabled="savingPlan" class="btn-primary btn-sm">{{ savingPlan ? 'Saving…' : 'Save' }}</button>
+                <button @click="cancelPlanEdit" class="btn-ghost !px-2.5 !py-1">Cancel</button>
+              </template>
+              <button v-else @click="startPlanEdit(key, p)" class="btn-secondary btn-sm !px-2.5 !py-1">Edit</button>
+            </div>
           </div>
         </div>
       </section>
@@ -295,6 +330,11 @@ const editError    = ref('')
 const deletingToken = ref(null)
 const confirmingDeleteToken = ref(null)
 
+const editingPlan = ref(null)
+const planForm    = ref({ label: '', max_endpoints: '', request_limit: '', retention_days: '', custom_responses: false })
+const savingPlan  = ref(false)
+const planError   = ref('')
+
 const settings       = ref(null)
 const savingSettings = ref(false)
 const settingsSaved  = ref(false)
@@ -451,6 +491,52 @@ async function toggleStatus(user) {
 async function refreshStats() {
   const s = await adminApi.stats()
   stats.value = s.data.data
+}
+
+// ── Plan editing ────────────────────────────────────────────────────────────
+function startPlanEdit(key, plan) {
+  editingPlan.value = key
+  planForm.value = {
+    label:             plan.label || '',
+    max_endpoints:     plan.max_endpoints ?? '',
+    request_limit:     plan.request_limit ?? '',
+    retention_days:    plan.retention_days ?? '',
+    custom_responses:  !!plan.custom_responses,
+  }
+  planError.value = ''
+}
+
+function cancelPlanEdit() {
+  editingPlan.value = null
+  planError.value = ''
+}
+
+// Blank input means "unlimited" / "forever" — send null, not 0.
+function toNullableInt(v) {
+  return v === '' || v === null || v === undefined ? null : Number(v)
+}
+
+async function savePlan(key) {
+  savingPlan.value = true
+  planError.value  = ''
+  try {
+    const res = await adminApi.updatePlans({
+      [key]: {
+        label:             planForm.value.label,
+        max_endpoints:     toNullableInt(planForm.value.max_endpoints),
+        request_limit:     toNullableInt(planForm.value.request_limit),
+        retention_days:    toNullableInt(planForm.value.retention_days),
+        custom_responses:  !!planForm.value.custom_responses,
+      },
+    })
+    plans.value = res.data.data
+    editingPlan.value = null
+  } catch (e) {
+    const errors = e.response?.data?.errors
+    planError.value = errors ? Object.values(errors).flat().join(' ') : (e.response?.data?.message || 'Could not save.')
+  } finally {
+    savingPlan.value = false
+  }
 }
 
 function fmtLimit(v) { return v === null || v === undefined ? 'Unlimited' : v.toLocaleString() }

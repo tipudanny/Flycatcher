@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Endpoint;
+use App\Support\Plans;
 use Illuminate\Console\Command;
 
 class ExpireEndpoints extends Command
@@ -51,7 +52,7 @@ class ExpireEndpoints extends Command
     {
         $pruned = 0;
 
-        foreach (config('plans') as $plan => $limits) {
+        foreach (Plans::all() as $plan => $limits) {
             $days = $limits['retention_days'] ?? null;
             if ($days === null) {
                 continue; // unlimited retention

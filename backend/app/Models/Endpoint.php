@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Plans;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -82,7 +83,7 @@ class Endpoint extends Model
 
         $plan = $this->owner?->plan ?? 'free';
 
-        return config("plans.{$plan}.request_limit");
+        return Plans::limit($plan, 'request_limit');
     }
 
     /**

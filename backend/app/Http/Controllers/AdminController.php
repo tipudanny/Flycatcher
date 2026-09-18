@@ -6,6 +6,7 @@ use App\Models\Endpoint;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\WebhookRequest;
+use App\Support\Plans;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -66,7 +67,7 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'plan'   => ['sometimes', Rule::in(array_keys(config('plans')))],
+            'plan'   => ['sometimes', Rule::in(array_keys(Plans::all()))],
             'status' => ['sometimes', Rule::in(['active', 'suspended'])],
         ]);
 
@@ -114,7 +115,31 @@ class AdminController extends Controller
      */
     public function plans(): JsonResponse
     {
-        return response()->json(['data' => config('plans')]);
+        return response()->json(['data' => Plans::all()]);
+    }
+
+    /**
+     * Edit one or more plans' limits/features from the admin panel. Only
+     * existing plan keys (free/pro/team) can be touched — this adjusts a
+     * tier's specification, it doesn't add or remove tiers. Changes apply
+     * immediately to every user on that plan, no deploy required.
+     */
+    public function updatePlans(Request $request): JsonResponse
+    {
+        $planKeys = array_keys(config('plans'));
+
+        $validated = $request->validate([
+            'plans'                          => 'required|array',
+            'plans.*.label'                  => 'sometimes|string|max:50',
+            'plans.*.max_endpoints'          => 'sometimes|nullable|integer|min:0',
+            'plans.*.request_limit'          => 'sometimes|nullable|integer|min:0',
+            'plans.*.retention_days'         => 'sometimes|nullable|integer|min:0',
+            'plans.*.custom_responses'       => 'sometimes|boolean',
+        ]);
+
+        $edits = array_intersect_key($validated['plans'], array_flip($planKeys));
+
+        return response()->json(['data' => Plans::update($edits)]);
     }
 
     /**
@@ -159,7 +184,7 @@ class AdminController extends Controller
 
     private function formatUser(User $user): array
     {
-        $plan = config("plans.{$user->plan}");
+        $plan = Plans::get($user->plan);
 
         return [
             'id'              => $user->id,

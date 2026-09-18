@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Endpoint;
 use App\Models\User;
 use App\Models\WebhookRequest;
+use App\Support\Plans;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -92,7 +93,7 @@ class AuthController extends Controller
     public function overview(Request $request): JsonResponse
     {
         $user = $request->user();
-        $plan = config("plans.{$user->plan}", []);
+        $plan = Plans::get($user->plan);
         $endpointIds = $user->endpoints()->pluck('id');
 
         return response()->json([
