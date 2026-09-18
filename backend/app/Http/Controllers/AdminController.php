@@ -43,7 +43,7 @@ class AdminController extends Controller
             ->when($request->query('q'), fn ($q, $term) => $q->where('email', 'like', "%{$term}%"))
             ->withCount('endpoints')
             ->orderByDesc('created_at')
-            ->paginate(10);
+            ->paginate($this->perPage($request));
 
         return response()->json([
             'data' => $users->map(fn (User $u) => $this->formatUser($u)),
@@ -85,7 +85,7 @@ class AdminController extends Controller
             ->when($request->query('q'), fn ($q, $term) =>
                 $q->where('token', 'like', "%{$term}%")->orWhere('label', 'like', "%{$term}%"))
             ->orderByDesc('last_activity_at')
-            ->paginate(10);
+            ->paginate($this->perPage($request));
 
         return response()->json([
             'data' => $endpoints->map(fn (Endpoint $e) => [
@@ -143,6 +143,18 @@ class AdminController extends Controller
         }
 
         return response()->json(['data' => Setting::map()]);
+    }
+
+    /**
+     * Page size for admin tables — restricted to a fixed set so the client's
+     * dropdown and the server never disagree about what's valid.
+     */
+    private function perPage(Request $request): int
+    {
+        $allowed = [10, 25, 50, 100];
+        $requested = (int) $request->query('per_page', 10);
+
+        return in_array($requested, $allowed, true) ? $requested : 10;
     }
 
     private function formatUser(User $user): array

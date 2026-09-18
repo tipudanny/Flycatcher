@@ -147,10 +147,14 @@
               of <span class="font-medium text-gray-700 dark:text-gray-300">{{ usersMeta.total }}</span> users
               <span class="text-gray-300 dark:text-gray-700">·</span>
               page <span class="font-medium text-gray-700 dark:text-gray-300">{{ usersMeta.current_page }}</span> of {{ usersMeta.last_page }}
-              <span class="text-gray-300 dark:text-gray-700">·</span>
-              {{ usersMeta.per_page }} per page
             </span>
             <div class="flex items-center gap-2">
+              <label class="flex items-center gap-1.5">
+                Per page
+                <select v-model.number="usersPerPage" @change="loadUsers(1)" class="input !py-1 !px-2 text-xs w-auto">
+                  <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}</option>
+                </select>
+              </label>
               <button @click="changeUsersPage(usersMeta.current_page - 1)" :disabled="usersMeta.current_page <= 1" class="btn-secondary btn-sm !px-2.5 !py-1">Prev</button>
               <button @click="changeUsersPage(usersMeta.current_page + 1)" :disabled="usersMeta.current_page >= usersMeta.last_page" class="btn-secondary btn-sm !px-2.5 !py-1">Next</button>
             </div>
@@ -242,10 +246,14 @@
               of <span class="font-medium text-gray-700 dark:text-gray-300">{{ endpointsMeta.total }}</span> endpoints
               <span class="text-gray-300 dark:text-gray-700">·</span>
               page <span class="font-medium text-gray-700 dark:text-gray-300">{{ endpointsMeta.current_page }}</span> of {{ endpointsMeta.last_page }}
-              <span class="text-gray-300 dark:text-gray-700">·</span>
-              {{ endpointsMeta.per_page }} per page
             </span>
             <div class="flex items-center gap-2">
+              <label class="flex items-center gap-1.5">
+                Per page
+                <select v-model.number="endpointsPerPage" @change="loadEndpoints(1)" class="input !py-1 !px-2 text-xs w-auto">
+                  <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}</option>
+                </select>
+              </label>
               <button @click="changeEndpointsPage(endpointsMeta.current_page - 1)" :disabled="endpointsMeta.current_page <= 1" class="btn-secondary btn-sm !px-2.5 !py-1">Prev</button>
               <button @click="changeEndpointsPage(endpointsMeta.current_page + 1)" :disabled="endpointsMeta.current_page >= endpointsMeta.last_page" class="btn-secondary btn-sm !px-2.5 !py-1">Next</button>
             </div>
@@ -275,6 +283,10 @@ const endpointQuery = ref('')
 const emptyMeta = () => ({ current_page: 1, last_page: 1, per_page: 0, total: 0, from: null, to: null })
 const usersMeta     = ref(emptyMeta())
 const endpointsMeta = ref(emptyMeta())
+
+const PER_PAGE_OPTIONS = [10, 25, 50, 100]
+const usersPerPage     = ref(10)
+const endpointsPerPage = ref(10)
 
 const editingToken = ref(null)
 const editForm     = ref({ label: '', token: '' })
@@ -338,12 +350,12 @@ async function saveSettings() {
 }
 
 async function loadUsers(page = 1) {
-  const res = await adminApi.users(userQuery.value, page)
+  const res = await adminApi.users(userQuery.value, page, usersPerPage.value)
   users.value = res.data.data
   usersMeta.value = res.data.meta
 }
 async function loadEndpoints(page = 1) {
-  const res = await adminApi.endpoints(endpointQuery.value, page)
+  const res = await adminApi.endpoints(endpointQuery.value, page, endpointsPerPage.value)
   endpoints.value = res.data.data
   endpointsMeta.value = res.data.meta
 }
