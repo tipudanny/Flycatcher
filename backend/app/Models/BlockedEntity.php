@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class BlockedEntity extends Model
 {
@@ -33,11 +34,22 @@ class BlockedEntity extends Model
 
     public static function activeValues(string $type): array
     {
-        return Cache::remember(
-            "blocked-entities:{$type}",
-            30,
-            fn () => static::where('type', $type)->where('is_locked', true)->pluck('value')->all()
-        );
+        try {
+            return Cache::remember(
+                "blocked-entities:{$type}",
+                30,
+                fn () => static::where('type', $type)->where('is_locked', true)->pluck('value')->all()
+            );
+        } catch (\Throwable $e) {
+            // This runs on nearly every request via EnforceBlocklist — a DB
+            // hiccup (or, e.g., the migration not having run yet) must never
+            // take the whole site down. Fail open: nothing is blocked until
+            // the underlying problem is fixed, which is the safe default for
+            // a feature that hasn't finished being set up.
+            Log::warning('BlockedEntity::activeValues failed, failing open', ['type' => $type, 'error' => $e->getMessage()]);
+
+            return [];
+        }
     }
 
     public static function forgetCache(string $type): void
