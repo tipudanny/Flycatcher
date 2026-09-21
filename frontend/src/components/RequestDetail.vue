@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 xl:p-8 max-w-6xl">
+  <div class="p-6 xl:p-8 max-w-6xl 2xl:max-w-7xl 3xl:max-w-[96rem] mx-auto">
     <!-- Request line -->
     <div class="flex items-center gap-3 mb-6 pb-5 border-b border-gray-200/70 dark:border-gray-800/70">
       <span :class="`method-${request.method}`" class="!text-xs !px-2.5 !py-1">
