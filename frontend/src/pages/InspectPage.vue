@@ -84,6 +84,10 @@
               class="h-3.5 w-3.5 accent-brand-600 cursor-pointer rounded"
             />
             <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ meta.total }} request{{ meta.total !== 1 ? 's' : '' }}</span>
+            <span v-if="unreadCount > 0" class="text-[10px] font-bold text-white bg-brand-500 rounded-full px-1.5 py-0.5 leading-none">{{ unreadCount }} new</span>
+            <button v-if="unreadCount > 0" @click="markAllRead" class="text-xs text-brand-600 hover:text-brand-500 dark:text-brand-400 dark:hover:text-brand-300 font-medium transition-colors">
+              Mark all read
+            </button>
             <button v-if="selectedIds.length" @click="deleteSelected" class="ml-auto text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors font-medium">
               Delete ({{ selectedIds.length }})
             </button>
@@ -100,7 +104,9 @@
                 'group relative px-4 py-3 border-b border-gray-100 dark:border-gray-800/70 cursor-pointer transition-colors',
                 selectedId === req.id
                   ? 'bg-gradient-to-r from-brand-200/80 to-brand-50/50 dark:from-brand-500/[0.32] dark:to-brand-500/[0.08] border-l-[3px] border-l-brand-600 dark:border-l-brand-400 ring-1 ring-inset ring-brand-500/15 -ml-px'
-                  : 'hover:bg-gray-100/70 dark:hover:bg-white/[0.03] border-l-[3px] border-l-transparent'
+                  : unread.isUnread(req.id)
+                    ? 'bg-brand-50/50 dark:bg-brand-500/[0.05] hover:bg-brand-100/60 dark:hover:bg-brand-500/[0.09] border-l-[3px] border-l-brand-400 dark:border-l-brand-500/60'
+                    : 'hover:bg-gray-100/70 dark:hover:bg-white/[0.03] border-l-[3px] border-l-transparent'
               ]"
             >
               <div class="flex items-center gap-2">
@@ -111,8 +117,9 @@
                   @change="toggleSelect(req.id)"
                   class="h-3.5 w-3.5 accent-brand-600 shrink-0 cursor-pointer rounded"
                 />
+                <span v-if="unread.isUnread(req.id)" class="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" title="Unread"></span>
                 <span :class="`method-${req.method}`">{{ req.method }}</span>
-                <span :class="['text-xs truncate font-mono', selectedId === req.id ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300']">{{ req.path || '/' }}</span>
+                <span :class="['text-xs truncate font-mono', (selectedId === req.id || unread.isUnread(req.id)) ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300']">{{ req.path || '/' }}</span>
                 <button
                   @click.stop="deleteOne(req)"
                   title="Delete request"
@@ -206,6 +213,7 @@ import { useRoute } from 'vue-router'
 import { endpointsApi } from '@/api/endpoints'
 import { useAuthStore } from '@/stores/auth'
 import { useLiveTail } from '@/composables/useLiveTail'
+import { useUnreadRequests } from '@/composables/useUnreadRequests'
 import RequestDetail from '@/components/RequestDetail.vue'
 import AppHeader from '@/components/AppHeader.vue'
 
@@ -225,6 +233,12 @@ const notFound        = ref(false)
 const copied          = ref(false)
 const selectedIds     = ref([])
 
+const unread = useUnreadRequests(token)
+const unreadCount = computed(() => unread.countUnread(requests.value.map(r => r.id)))
+function markAllRead() {
+  unread.markAllRead(requests.value.map(r => r.id))
+}
+
 onMounted(async () => {
   try {
     const [epRes, reqRes] = await Promise.all([
@@ -234,6 +248,7 @@ onMounted(async () => {
     endpoint.value = epRes.data.data
     requests.value = reqRes.data.data
     meta.value     = reqRes.data.meta
+    unread.seed(requests.value.map(r => r.id))
   } catch {
     notFound.value = true
   }
@@ -276,6 +291,7 @@ onUnmounted(() => stopLiveTail())
 
 async function selectRequest(summary) {
   selectedId.value = summary.id
+  unread.markRead(summary.id)
   const res = await endpointsApi.getRequest(token, summary.id)
   selectedRequest.value = res.data.data
 }
