@@ -17,6 +17,33 @@ return Application::configure(basePath: dirname(__DIR__))
         // Apply the general 'api' rate limiter to every /api/* route.
         $middleware->throttleApi();
 
+        // Block list check + rate-limit-hit logging for admin visibility.
+        // Appended to both groups (not the global stack) so they run *after*
+        // routing — the token-scoped ingest route needs $request->route() to
+        // resolve its {token} parameter. EnforceBlocklist runs first so a
+        // locked IP/token never even reaches the rate limiter.
+        $middleware->web(append: [
+            \App\Http\Middleware\EnforceBlocklist::class,
+            \App\Http\Middleware\LogRateLimitHits::class,
+        ]);
+        $middleware->api(append: [
+            \App\Http\Middleware\EnforceBlocklist::class,
+            \App\Http\Middleware\LogRateLimitHits::class,
+        ]);
+
+        // Laravel sorts a route's resolved middleware by priority regardless
+        // of registration order, and throttle:* outranks anything appended
+        // above by default — so without this, both middleware would run
+        // *after* the throttle check instead of wrapping it.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            prepend: \App\Http\Middleware\EnforceBlocklist::class,
+        );
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            prepend: \App\Http\Middleware\LogRateLimitHits::class,
+        );
+
         // Ingestion is for third-party webhook senders — they can't carry a
         // CSRF token, and the web group would otherwise 419 every POST.
         $middleware->validateCsrfTokens(except: [

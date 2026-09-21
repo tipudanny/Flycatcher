@@ -295,6 +295,92 @@
           </div>
         </div>
       </section>
+
+      <!-- Rate limit activity -->
+      <section>
+        <div class="flex flex-wrap items-center gap-2 justify-between mb-3">
+          <h2 class="section-title">Rate limit activity</h2>
+          <div class="flex items-center gap-1.5">
+            <button
+              v-for="opt in RATE_LIMIT_TYPE_FILTERS"
+              :key="opt.value"
+              @click="setRateLimitFilter(opt.value)"
+              :class="rateLimitTypeFilter === opt.value
+                ? 'bg-brand-600 text-white'
+                : 'bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-brand-400 dark:hover:border-brand-500'"
+              class="text-xs font-medium px-2.5 py-1 rounded-md transition-colors"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-gray-500 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-white/[0.02]">
+              <tr>
+                <th class="text-left font-medium px-4 py-2.5">Type</th>
+                <th class="text-left font-medium px-4 py-2.5">Value</th>
+                <th class="text-left font-medium px-4 py-2.5">Limiter</th>
+                <th class="text-right font-medium px-4 py-2.5">Hits</th>
+                <th class="text-right font-medium px-4 py-2.5">Last seen</th>
+                <th class="text-left font-medium px-4 py-2.5">Status</th>
+                <th class="text-right font-medium px-4 py-2.5">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="hit in rateLimitHits" :key="hit.id" class="border-b border-gray-100 dark:border-gray-800/60 last:border-0 hover:bg-gray-50/70 dark:hover:bg-white/[0.02] transition-colors">
+                <td class="px-4 py-2.5"><span class="badge-neutral">{{ hit.key_type }}</span></td>
+                <td class="px-4 py-2.5 font-mono text-xs text-gray-900 dark:text-gray-200 max-w-xs truncate" :title="hit.key_value">{{ hit.key_value }}</td>
+                <td class="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-xs">{{ hit.limiter }}</td>
+                <td class="px-4 py-2.5 text-right text-gray-700 dark:text-gray-300 tabular-nums">{{ hit.hit_count }}</td>
+                <td class="px-4 py-2.5 text-right text-gray-500 text-xs">{{ timeAgo(hit.last_hit_at) }}</td>
+                <td class="px-4 py-2.5">
+                  <span v-if="hit.blocked === true" class="badge-red">Locked</span>
+                  <span v-else-if="hit.blocked === false" class="badge-green">OK</span>
+                  <span v-else class="text-xs text-gray-400 dark:text-gray-600">manage via Users</span>
+                </td>
+                <td class="px-4 py-2.5 text-right">
+                  <button
+                    v-if="hit.blocked === true"
+                    @click="unblockEntity(hit)"
+                    :disabled="blockingKey === hit.key_type + hit.key_value"
+                    class="btn-secondary btn-sm !px-2.5 !py-1"
+                  >Unlock</button>
+                  <button
+                    v-else-if="hit.blocked === false"
+                    @click="blockEntity(hit)"
+                    :disabled="blockingKey === hit.key_type + hit.key_value"
+                    class="text-xs px-2.5 py-1 rounded-md bg-red-600 hover:bg-red-500 text-white transition-colors"
+                  >Lock</button>
+                </td>
+              </tr>
+              <tr v-if="!rateLimitHits.length">
+                <td colspan="7" class="px-4 py-10 text-center text-gray-400 dark:text-gray-600 text-xs">No rate limit hits recorded.</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+          <div v-if="rateLimitsMeta.total" class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
+            <span>
+              Showing <span class="font-medium text-gray-700 dark:text-gray-300">{{ rateLimitsMeta.from }}–{{ rateLimitsMeta.to }}</span>
+              of <span class="font-medium text-gray-700 dark:text-gray-300">{{ rateLimitsMeta.total }}</span> entries
+              <span class="text-gray-300 dark:text-gray-700">·</span>
+              page <span class="font-medium text-gray-700 dark:text-gray-300">{{ rateLimitsMeta.current_page }}</span> of {{ rateLimitsMeta.last_page }}
+            </span>
+            <div class="flex items-center gap-2">
+              <label class="flex items-center gap-1.5">
+                Per page
+                <select v-model.number="rateLimitsPerPage" @change="loadRateLimitHits(1)" class="input !py-1 !px-2 text-xs w-auto">
+                  <option v-for="n in PER_PAGE_OPTIONS" :key="n" :value="n">{{ n }}</option>
+                </select>
+              </label>
+              <button @click="changeRateLimitsPage(rateLimitsMeta.current_page - 1)" :disabled="rateLimitsMeta.current_page <= 1" class="btn-secondary btn-sm !px-2.5 !py-1">Prev</button>
+              <button @click="changeRateLimitsPage(rateLimitsMeta.current_page + 1)" :disabled="rateLimitsMeta.current_page >= rateLimitsMeta.last_page" class="btn-secondary btn-sm !px-2.5 !py-1">Next</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 </template>
@@ -340,6 +426,19 @@ const savingSettings = ref(false)
 const settingsSaved  = ref(false)
 const settingsError  = ref('')
 
+const rateLimitHits      = ref([])
+const rateLimitsMeta     = ref(emptyMeta())
+const rateLimitsPerPage  = ref(10)
+const rateLimitTypeFilter = ref('')
+const blockingKey         = ref(null)
+
+const RATE_LIMIT_TYPE_FILTERS = [
+  { value: '',      label: 'All' },
+  { value: 'ip',    label: 'IP' },
+  { value: 'token', label: 'Endpoint' },
+  { value: 'user',  label: 'User' },
+]
+
 const ICON = {
   users:     '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-2.26a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 10-4-4" /></svg>',
   suspended: '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 105.636 5.636a9 9 0 0012.728 12.728zM5.636 5.636l12.728 12.728" /></svg>',
@@ -363,7 +462,7 @@ onMounted(async () => {
   stats.value = s.data.data
   plans.value = p.data.data
   settings.value = cfg.data.data
-  await Promise.all([loadUsers(), loadEndpoints()])
+  await Promise.all([loadUsers(), loadEndpoints(), loadRateLimitHits()])
 })
 
 async function saveSettings() {
@@ -398,6 +497,39 @@ async function loadEndpoints(page = 1) {
   const res = await adminApi.endpoints(endpointQuery.value, page, endpointsPerPage.value)
   endpoints.value = res.data.data
   endpointsMeta.value = res.data.meta
+}
+
+async function loadRateLimitHits(page = 1) {
+  const res = await adminApi.rateLimitHits(rateLimitTypeFilter.value, page, rateLimitsPerPage.value)
+  rateLimitHits.value = res.data.data
+  rateLimitsMeta.value = res.data.meta
+}
+function changeRateLimitsPage(page) {
+  if (page < 1 || page > rateLimitsMeta.value.last_page) return
+  loadRateLimitHits(page)
+}
+function setRateLimitFilter(type) {
+  rateLimitTypeFilter.value = type
+  loadRateLimitHits(1)
+}
+
+async function blockEntity(hit) {
+  blockingKey.value = hit.key_type + hit.key_value
+  try {
+    await adminApi.block(hit.key_type, hit.key_value, `Locked from rate limit activity (${hit.limiter})`)
+    hit.blocked = true
+  } finally {
+    blockingKey.value = null
+  }
+}
+async function unblockEntity(hit) {
+  blockingKey.value = hit.key_type + hit.key_value
+  try {
+    await adminApi.unblock(hit.key_type, hit.key_value)
+    hit.blocked = false
+  } finally {
+    blockingKey.value = null
+  }
 }
 
 function changeUsersPage(page) {
@@ -541,4 +673,12 @@ async function savePlan(key) {
 
 function fmtLimit(v) { return v === null || v === undefined ? 'Unlimited' : v.toLocaleString() }
 function fmtDate(iso) { return new Date(iso).toLocaleDateString() }
+
+function timeAgo(iso) {
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (s < 60)    return `${s}s ago`
+  if (s < 3600)  return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
+}
 </script>

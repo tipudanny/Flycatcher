@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Endpoint;
 use App\Models\WebhookRequest;
 use App\Services\FirebaseService;
+use App\Support\ClientIp;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -77,7 +78,7 @@ class IngestController extends Controller
 
         // ── 5. Resolve client IP ───────────────────────────────────────────────
         // Only trust X-Forwarded-For if coming through our own load balancer.
-        $ip = $this->resolveClientIp($request);
+        $ip = ClientIp::resolve($request);
 
         // ── 6. Persist ────────────────────────────────────────────────────────
         $webhookRequest = WebhookRequest::create([
@@ -135,18 +136,5 @@ class IngestController extends Controller
     private function trustProxy(): bool
     {
         return (bool) config('app.trust_proxy', false);
-    }
-
-    private function resolveClientIp(Request $request): string
-    {
-        if ($this->trustProxy()) {
-            // Read only the first (leftmost = original client) hop from X-Forwarded-For.
-            $forwarded = $request->header('X-Forwarded-For');
-            if ($forwarded) {
-                return trim(explode(',', $forwarded)[0]);
-            }
-        }
-
-        return $request->ip();
     }
 }

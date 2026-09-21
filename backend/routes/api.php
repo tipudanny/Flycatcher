@@ -56,6 +56,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/endpoints',       [AdminController::class, 'endpoints']);
     Route::get('/settings',        [AdminController::class, 'settings']);
     Route::put('/settings',        [AdminController::class, 'updateSettings']);
+    Route::get('/rate-limits',     [AdminController::class, 'rateLimitHits']);
+    Route::post('/block',          [AdminController::class, 'blockEntity']);
+    Route::post('/unblock',        [AdminController::class, 'unblockEntity']);
 });
 
 // ── Browser extension ────────────────────────────────────────────────────────────

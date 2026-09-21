@@ -11,6 +11,11 @@ export const adminApi = {
   settings:       ()         => api.get('/admin/settings'),
   updateSettings: (data)     => api.put('/admin/settings', data),
 
+  rateLimitHits: (keyType = '', page = 1, perPage = 10) =>
+    api.get('/admin/rate-limits', { params: { key_type: keyType, page, per_page: perPage } }),
+  block:   (type, value, reason) => api.post('/admin/block', { type, value, reason }),
+  unblock: (type, value)         => api.post('/admin/unblock', { type, value }),
+
   // Endpoint management reuses the owner-scoped endpoints API — the backend
   // grants admins access to every endpoint through the same routes.
   updateEndpoint: (token, data) => endpointsApi.update(token, data),

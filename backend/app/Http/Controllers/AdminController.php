@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BlockedEntity;
 use App\Models\Endpoint;
+use App\Models\RateLimitHit;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\WebhookRequest;
@@ -111,6 +113,87 @@ class AdminController extends Controller
     }
 
     /**
+     * Users/IPs/endpoint tokens that have hit a rate limit, most recent
+     * first, with whether each is currently locked — the raw material for
+     * "who's hammering us and should we block them."
+     */
+    public function rateLimitHits(Request $request): JsonResponse
+    {
+        $hits = RateLimitHit::query()
+            ->when($request->query('key_type'), fn ($q, $type) => $q->where('key_type', $type))
+            ->orderByDesc('last_hit_at')
+            ->paginate($this->perPage($request));
+
+        // Blockable types (ip/token) only — a 'user' key is handled via the
+        // existing suspend/reactivate action, not this blocklist.
+        $blockedIps    = BlockedEntity::activeValues('ip');
+        $blockedTokens = BlockedEntity::activeValues('token');
+
+        return response()->json([
+            'data' => $hits->map(fn (RateLimitHit $h) => [
+                'id'           => $h->id,
+                'limiter'      => $h->limiter,
+                'key_type'     => $h->key_type,
+                'key_value'    => $h->key_value,
+                'route'        => $h->route,
+                'hit_count'    => $h->hit_count,
+                'first_hit_at' => $h->first_hit_at->toIso8601String(),
+                'last_hit_at'  => $h->last_hit_at->toIso8601String(),
+                'blocked'      => match ($h->key_type) {
+                    'ip'    => in_array($h->key_value, $blockedIps, true),
+                    'token' => in_array($h->key_value, $blockedTokens, true),
+                    default => null, // 'user' — not blockable here
+                },
+            ]),
+            'meta' => [
+                'current_page' => $hits->currentPage(),
+                'last_page'    => $hits->lastPage(),
+                'per_page'     => $hits->perPage(),
+                'total'        => $hits->total(),
+                'from'         => $hits->firstItem(),
+                'to'           => $hits->lastItem(),
+            ],
+        ]);
+    }
+
+    /**
+     * Lock an IP or endpoint token — blocked immediately (cache invalidated
+     * on write), enforced by EnforceBlocklist on the next request.
+     */
+    public function blockEntity(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'type'   => ['required', Rule::in(['ip', 'token'])],
+            'value'  => ['required', 'string', 'max:255'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $entity = BlockedEntity::lock(
+            $validated['type'],
+            $validated['value'],
+            $validated['reason'] ?? null,
+            $request->user()->id,
+        );
+
+        return response()->json(['data' => $this->formatBlockedEntity($entity)]);
+    }
+
+    /**
+     * Unlock a previously-locked IP or endpoint token.
+     */
+    public function unblockEntity(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'type'  => ['required', Rule::in(['ip', 'token'])],
+            'value' => ['required', 'string', 'max:255'],
+        ]);
+
+        BlockedEntity::unlock($validated['type'], $validated['value']);
+
+        return response()->json(['data' => ['type' => $validated['type'], 'value' => $validated['value'], 'blocked' => false]]);
+    }
+
+    /**
      * The plan catalogue + limits, so the UI can show what each tier grants.
      */
     public function plans(): JsonResponse
@@ -180,6 +263,17 @@ class AdminController extends Controller
         $requested = (int) $request->query('per_page', 10);
 
         return in_array($requested, $allowed, true) ? $requested : 10;
+    }
+
+    private function formatBlockedEntity(BlockedEntity $entity): array
+    {
+        return [
+            'type'       => $entity->type,
+            'value'      => $entity->value,
+            'blocked'    => $entity->is_locked,
+            'reason'     => $entity->reason,
+            'locked_at'  => $entity->locked_at?->toIso8601String(),
+        ];
     }
 
     private function formatUser(User $user): array
