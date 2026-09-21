@@ -17,7 +17,10 @@ return new class extends Migration
             $table->string('value');
             $table->boolean('is_locked')->default(true);
             $table->string('reason')->nullable();
-            $table->foreignUuid('locked_by')->nullable()->constrained('users')->nullOnDelete();
+            // No FK constraint — just an informational reference to whoever
+            // locked it. Avoids coupling to the exact users.id column type,
+            // and a deleted admin shouldn't be able to block this insert.
+            $table->uuid('locked_by')->nullable();
             $table->timestamp('locked_at')->nullable();
             $table->timestamp('unlocked_at')->nullable();
             $table->timestamps();
